@@ -1,0 +1,14 @@
+package {{.BasePackage}}.core.mappers;
+
+import {{.BasePackage}}.models.entities.SampleEntity;
+import {{.BasePackage}}.interfaces.dtos.SampleDTO;
+import org.mapstruct.Mapper;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.NullValuePropertyMappingStrategy;
+
+@Mapper(componentModel = "spring", nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+public interface SampleMapper {
+    SampleDTO toDto(SampleEntity entity);
+    SampleEntity toEntity(SampleDTO dto);
+    void updateEntity(SampleDTO dto, @MappingTarget SampleEntity entity);
+}

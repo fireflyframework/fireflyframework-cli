@@ -1,0 +1,33 @@
+package {{.BasePackage}}.web.controller;
+
+import {{.BasePackage}}.interfaces.commands.SampleCommand;
+import {{.BasePackage}}.interfaces.dtos.SampleDTO;
+import {{.BasePackage}}.interfaces.queries.SampleQuery;
+import lombok.RequiredArgsConstructor;
+import org.fireflyframework.cqrs.command.CommandBus;
+import org.fireflyframework.cqrs.query.QueryBus;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Mono;
+
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/v1/samples")
+@RequiredArgsConstructor
+public class SampleController {
+
+    private final CommandBus commandBus;
+    private final QueryBus queryBus;
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public Mono<SampleDTO> create(@RequestBody SampleCommand command) {
+        return commandBus.send(command);
+    }
+
+    @GetMapping("/{id}")
+    public Mono<SampleDTO> getById(@PathVariable UUID id) {
+        return queryBus.query(SampleQuery.builder().id(id).build());
+    }
+}

@@ -1,0 +1,131 @@
+name: domain
+description: Multi-module domain microservice with CQRS, Saga orchestration, and bounded context organization
+multiModule: true
+
+parent:
+  groupId: org.fireflyframework
+  artifactId: fireflyframework-parent
+  version: 1.0.0-SNAPSHOT
+
+modules:
+  - suffix: interfaces
+    description: Shared DTOs, commands, queries, and API contracts
+    packages:
+      - dtos
+      - commands
+      - queries
+    dependencies:
+      - { groupId: "org.fireflyframework", artifactId: "fireflyframework-utils" }
+      - { groupId: "org.fireflyframework", artifactId: "fireflyframework-validators" }
+      - { groupId: "org.fireflyframework", artifactId: "fireflyframework-transactional-engine" }
+      - { groupId: "org.projectlombok", artifactId: "lombok", scope: "provided" }
+      - { groupId: "jakarta.validation", artifactId: "jakarta.validation-api" }
+    templates:
+      - { src: "domain/interfaces-pom.xml.tmpl", dest: "pom.xml" }
+      - { src: "domain/SampleDTO.java.tmpl", dest: "src/main/java/{{.PackagePath}}/interfaces/dtos/SampleDTO.java" }
+      - { src: "domain/SampleCommand.java.tmpl", dest: "src/main/java/{{.PackagePath}}/interfaces/commands/SampleCommand.java" }
+      - { src: "domain/SampleQuery.java.tmpl", dest: "src/main/java/{{.PackagePath}}/interfaces/queries/SampleQuery.java" }
+
+  - suffix: infra
+    description: External service client factories and configuration properties
+    packages:
+      - clients
+    dependencies:
+      - { groupId: "org.fireflyframework", artifactId: "fireflyframework-utils" }
+      - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-webflux" }
+      - { groupId: "org.projectlombok", artifactId: "lombok", scope: "provided" }
+    templates:
+      - { src: "domain/infra-pom.xml.tmpl", dest: "pom.xml" }
+      - { src: "domain/ClientFactory.java.tmpl", dest: "src/main/java/{{.PackagePath}}/infra/clients/ClientFactory.java" }
+      - { src: "domain/DownstreamProperties.java.tmpl", dest: "src/main/java/{{.PackagePath}}/infra/clients/DownstreamProperties.java" }
+
+  - suffix: core
+    description: Commands, handlers, queries, services, and saga workflows
+    packages:
+      - handlers
+      - services
+      - services/impl
+      - workflows
+    dependencies:
+      - { groupId: "{{.GroupId}}", artifactId: "{{.ArtifactId}}-interfaces", internal: true }
+      - { groupId: "org.fireflyframework", artifactId: "fireflyframework-utils" }
+      - { groupId: "org.fireflyframework", artifactId: "fireflyframework-domain" }
+      - { groupId: "org.fireflyframework", artifactId: "fireflyframework-cqrs" }
+      - { groupId: "org.fireflyframework", artifactId: "fireflyframework-transactional-engine" }
+      - { groupId: "org.fireflyframework", artifactId: "fireflyframework-eda" }
+      - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-webflux" }
+      - { groupId: "org.mapstruct", artifactId: "mapstruct" }
+      - { groupId: "org.projectlombok", artifactId: "lombok", scope: "provided" }
+    testDependencies:
+      - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-test" }
+      - { groupId: "io.projectreactor", artifactId: "reactor-test" }
+    plugins:
+      - mapstruct-lombok
+    templates:
+      - { src: "domain/core-pom.xml.tmpl", dest: "pom.xml" }
+      - { src: "domain/SampleHandler.java.tmpl", dest: "src/main/java/{{.PackagePath}}/core/handlers/SampleHandler.java" }
+      - { src: "domain/SampleDomainService.java.tmpl", dest: "src/main/java/{{.PackagePath}}/core/services/SampleDomainService.java" }
+      - { src: "domain/SampleDomainServiceImpl.java.tmpl", dest: "src/main/java/{{.PackagePath}}/core/services/impl/SampleDomainServiceImpl.java" }
+      - { src: "domain/CreateSampleSaga.java.tmpl", dest: "src/main/java/{{.PackagePath}}/core/workflows/CreateSampleSaga.java" }
+      - { src: "domain/SampleDomainServiceImplTest.java.tmpl", dest: "src/test/java/{{.PackagePath}}/core/services/impl/SampleDomainServiceImplTest.java" }
+      - { src: "domain/SampleHandlerTest.java.tmpl", dest: "src/test/java/{{.PackagePath}}/core/handlers/SampleHandlerTest.java" }
+
+  - suffix: sdk
+    description: OpenAPI specification and generated client SDK
+    packages: []
+    dependencies:
+      - { groupId: "{{.GroupId}}", artifactId: "{{.ArtifactId}}-web", scope: "provided", internal: true }
+      - { groupId: "io.swagger.core.v3", artifactId: "swagger-annotations" }
+      - { groupId: "com.fasterxml.jackson.core", artifactId: "jackson-databind" }
+      - { groupId: "com.fasterxml.jackson.datatype", artifactId: "jackson-datatype-jsr310" }
+      - { groupId: "jakarta.annotation", artifactId: "jakarta.annotation-api" }
+      - { groupId: "org.projectlombok", artifactId: "lombok", scope: "provided" }
+      - { groupId: "com.squareup.okhttp3", artifactId: "okhttp" }
+      - { groupId: "com.squareup.okhttp3", artifactId: "logging-interceptor" }
+      - { groupId: "org.openapitools", artifactId: "jackson-databind-nullable" }
+    plugins:
+      - openapi-generator
+    templates:
+      - { src: "domain/sdk-pom.xml.tmpl", dest: "pom.xml" }
+      - { src: "shared/openapi.yml.tmpl", dest: "src/main/resources/api-spec/openapi.yml" }
+
+  - suffix: web
+    description: Spring Boot application with @EnableTransactionalEngine and controllers
+    packages:
+      - controller
+    dependencies:
+      - { groupId: "{{.GroupId}}", artifactId: "{{.ArtifactId}}-core", internal: true }
+      - { groupId: "{{.GroupId}}", artifactId: "{{.ArtifactId}}-interfaces", internal: true }
+      - { groupId: "org.fireflyframework", artifactId: "fireflyframework-web" }
+      - { groupId: "org.fireflyframework", artifactId: "fireflyframework-transactional-engine" }
+      - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-webflux" }
+      - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-actuator" }
+      - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-validation" }
+      - { groupId: "org.springdoc", artifactId: "springdoc-openapi-starter-webflux-ui" }
+      - { groupId: "io.micrometer", artifactId: "micrometer-registry-prometheus" }
+      - { groupId: "org.projectlombok", artifactId: "lombok", scope: "provided" }
+    testDependencies:
+      - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-test" }
+      - { groupId: "io.projectreactor", artifactId: "reactor-test" }
+    plugins:
+      - spring-boot
+      - mapstruct-compiler
+      - resources-filter
+    springBoot: true
+    annotations:
+      - "@SpringBootApplication"
+      - "@EnableWebFlux"
+      - "@ConfigurationPropertiesScan"
+      - "@EnableTransactionalEngine"
+      - "@OpenAPIDefinition"
+    templates:
+      - { src: "domain/web-pom.xml.tmpl", dest: "pom.xml" }
+      - { src: "domain/Application.java.tmpl", dest: "src/main/java/{{.PackagePath}}/web/{{.ApplicationClassName}}.java" }
+      - { src: "domain/SampleController.java.tmpl", dest: "src/main/java/{{.PackagePath}}/web/controller/SampleController.java" }
+      - { src: "domain/application.yaml.tmpl", dest: "src/main/resources/application.yaml" }
+
+rootTemplates:
+  - { src: "domain/root-pom.xml.tmpl", dest: "pom.xml" }
+  - { src: "shared/gitignore.tmpl", dest: ".gitignore" }
+  - { src: "shared/README.md.tmpl", dest: "README.md" }
+  - { src: "shared/LICENSE.tmpl", dest: "LICENSE" }

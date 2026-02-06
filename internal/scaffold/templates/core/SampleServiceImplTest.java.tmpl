@@ -1,0 +1,61 @@
+package {{.BasePackage}}.core.services.impl;
+
+import {{.BasePackage}}.models.entities.SampleEntity;
+import {{.BasePackage}}.core.mappers.SampleMapper;
+import {{.BasePackage}}.models.repositories.SampleRepository;
+import {{.BasePackage}}.interfaces.dtos.SampleDTO;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
+
+import java.util.UUID;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class SampleServiceImplTest {
+
+    @Mock
+    private SampleRepository repository;
+
+    @Mock
+    private SampleMapper mapper;
+
+    @InjectMocks
+    private SampleServiceImpl service;
+
+    private SampleDTO sampleDTO;
+    private SampleEntity sampleEntity;
+    private UUID sampleId;
+
+    @BeforeEach
+    void setUp() {
+        sampleId = UUID.randomUUID();
+        sampleDTO = SampleDTO.builder().id(sampleId).name("test").build();
+        sampleEntity = SampleEntity.builder().id(sampleId).name("test").build();
+    }
+
+    @Test
+    void getById_shouldReturnSample() {
+        when(repository.findById(sampleId)).thenReturn(Mono.just(sampleEntity));
+        when(mapper.toDto(sampleEntity)).thenReturn(sampleDTO);
+
+        StepVerifier.create(service.getById(sampleId))
+                .expectNext(sampleDTO)
+                .verifyComplete();
+    }
+
+    @Test
+    void delete_shouldComplete() {
+        when(repository.deleteById(sampleId)).thenReturn(Mono.empty());
+
+        StepVerifier.create(service.delete(sampleId))
+                .verifyComplete();
+    }
+}

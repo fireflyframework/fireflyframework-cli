@@ -1,0 +1,11 @@
+package {{.BasePackage}}.core.services;
+
+import {{.BasePackage}}.interfaces.commands.SampleCommand;
+import {{.BasePackage}}.interfaces.dtos.SampleDTO;
+import {{.BasePackage}}.interfaces.queries.SampleQuery;
+import reactor.core.publisher.Mono;
+
+public interface SampleDomainService {
+    Mono<SampleDTO> process(SampleCommand command);
+    Mono<SampleDTO> query(SampleQuery query);
+}

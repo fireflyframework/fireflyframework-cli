@@ -1,0 +1,44 @@
+package {{.BasePackage}}.core.services.impl;
+
+import {{.BasePackage}}.interfaces.commands.SampleCommand;
+import {{.BasePackage}}.interfaces.dtos.SampleDTO;
+import {{.BasePackage}}.interfaces.queries.SampleQuery;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.junit.jupiter.MockitoExtension;
+import reactor.test.StepVerifier;
+
+import java.util.UUID;
+
+@ExtendWith(MockitoExtension.class)
+class SampleDomainServiceImplTest {
+
+    @InjectMocks
+    private SampleDomainServiceImpl service;
+
+    @Test
+    void process_shouldReturnDTO() {
+        UUID id = UUID.randomUUID();
+        SampleCommand command = SampleCommand.builder()
+                .id(id)
+                .name("test")
+                .build();
+
+        StepVerifier.create(service.process(command))
+                .expectNextMatches(dto -> dto.getId().equals(id))
+                .verifyComplete();
+    }
+
+    @Test
+    void query_shouldReturnDTO() {
+        UUID id = UUID.randomUUID();
+        SampleQuery query = SampleQuery.builder()
+                .id(id)
+                .build();
+
+        StepVerifier.create(service.query(query))
+                .expectNextMatches(dto -> dto.getId().equals(id))
+                .verifyComplete();
+    }
+}

@@ -1,0 +1,20 @@
+package {{.BasePackage}}.interfaces.commands;
+
+import {{.BasePackage}}.interfaces.dtos.SampleDTO;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.fireflyframework.cqrs.command.Command;
+
+import java.util.UUID;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class SampleCommand implements Command<SampleDTO> {
+    private UUID id;
+    private String name;
+    private String description;
+}

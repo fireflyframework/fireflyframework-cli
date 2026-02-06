@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: {{.ArtifactId}}
+
+server:
+  port: ${SERVER_PORT:{{.ServerPort}}}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    root: INFO
+    {{.BasePackage}}: DEBUG
+    org.fireflyframework: DEBUG

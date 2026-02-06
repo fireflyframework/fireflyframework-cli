@@ -1,0 +1,19 @@
+package {{.BasePackage}}.config;
+
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.ComponentScan;
+
+@Slf4j
+@AutoConfiguration
+@ConditionalOnProperty(prefix = "{{.ArtifactId}}", name = "enabled", havingValue = "true", matchIfMissing = true)
+@EnableConfigurationProperties({{.ModulePrefix}}Properties.class)
+@ComponentScan(basePackages = "{{.BasePackage}}")
+public class {{.ModulePrefix}}AutoConfiguration {
+
+    public {{.ModulePrefix}}AutoConfiguration() {
+        log.info("{{.ProjectName}} auto-configuration loaded");
+    }
+}

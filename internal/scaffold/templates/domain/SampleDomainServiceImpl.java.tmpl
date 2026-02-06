@@ -1,0 +1,32 @@
+package {{.BasePackage}}.core.services.impl;
+
+import {{.BasePackage}}.core.services.SampleDomainService;
+import {{.BasePackage}}.interfaces.commands.SampleCommand;
+import {{.BasePackage}}.interfaces.dtos.SampleDTO;
+import {{.BasePackage}}.interfaces.queries.SampleQuery;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class SampleDomainServiceImpl implements SampleDomainService {
+
+    @Override
+    public Mono<SampleDTO> process(SampleCommand command) {
+        log.info("Processing command for: {}", command.getName());
+        SampleDTO dto = new SampleDTO();
+        dto.setId(command.getId());
+        return Mono.just(dto);
+    }
+
+    @Override
+    public Mono<SampleDTO> query(SampleQuery query) {
+        log.info("Querying for id: {}", query.getId());
+        SampleDTO dto = new SampleDTO();
+        dto.setId(query.getId());
+        return Mono.just(dto);
+    }
+}

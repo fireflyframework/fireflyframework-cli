@@ -1,0 +1,18 @@
+package {{.BasePackage}}.interfaces.queries;
+
+import {{.BasePackage}}.interfaces.dtos.SampleDTO;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.fireflyframework.cqrs.query.Query;
+
+import java.util.UUID;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class SampleQuery implements Query<SampleDTO> {
+    private UUID id;
+}

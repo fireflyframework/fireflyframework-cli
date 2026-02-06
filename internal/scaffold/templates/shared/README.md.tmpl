@@ -1,0 +1,29 @@
+# {{.ProjectName}}
+
+{{.Description}}
+
+## Built with Firefly Framework
+
+This project was scaffolded using the [Firefly Framework CLI](https://github.com/fireflyframework/fireflyframework-cli) (`{{.ArchetypeName}}` archetype).
+
+## Prerequisites
+
+- Java {{.JavaVersion}}+
+- Maven 3.9+
+- Firefly Framework artifacts installed (`firefly setup`)
+
+## Build
+
+```bash
+mvn clean install
+```
+
+## Run
+
+```bash
+mvn spring-boot:run -pl {{.ArtifactId}}-web
+```
+
+## License
+
+Copyright {{.Year}} — All rights reserved.

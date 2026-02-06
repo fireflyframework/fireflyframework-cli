@@ -1,0 +1,50 @@
+name: application
+description: Single-module application-layer microservice with plugin architecture, security, and context management
+multiModule: false
+
+parent:
+  groupId: org.fireflyframework
+  artifactId: fireflyframework-parent
+  version: 1.0.0-SNAPSHOT
+
+dependencies:
+  - { groupId: "org.fireflyframework", artifactId: "fireflyframework-application" }
+  - { groupId: "org.fireflyframework", artifactId: "fireflyframework-web" }
+  - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-webflux" }
+  - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-validation" }
+  - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-actuator" }
+  - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-security" }
+  - { groupId: "org.springdoc", artifactId: "springdoc-openapi-starter-webflux-ui" }
+  - { groupId: "org.projectlombok", artifactId: "lombok", scope: "provided" }
+  - { groupId: "com.fasterxml.jackson.core", artifactId: "jackson-databind" }
+  - { groupId: "com.fasterxml.jackson.datatype", artifactId: "jackson-datatype-jsr310" }
+  - { groupId: "io.micrometer", artifactId: "micrometer-registry-prometheus" }
+
+testDependencies:
+  - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-test" }
+  - { groupId: "io.projectreactor", artifactId: "reactor-test" }
+  - { groupId: "org.springframework.security", artifactId: "spring-security-test" }
+
+plugins:
+  - spring-boot
+
+packages:
+  - config
+  - controller
+  - service
+
+annotations:
+  - "@SpringBootApplication"
+  - "@EnableWebFlux"
+  - "@ConfigurationPropertiesScan"
+  - "@OpenAPIDefinition"
+
+rootTemplates:
+  - { src: "application/pom.xml.tmpl", dest: "pom.xml" }
+  - { src: "application/Application.java.tmpl", dest: "src/main/java/{{.PackagePath}}/{{.ApplicationClassName}}.java" }
+  - { src: "application/SampleController.java.tmpl", dest: "src/main/java/{{.PackagePath}}/controller/SampleController.java" }
+  - { src: "application/application.yaml.tmpl", dest: "src/main/resources/application.yaml" }
+  - { src: "application/ApplicationTest.java.tmpl", dest: "src/test/java/{{.PackagePath}}/{{.ApplicationClassName}}Test.java" }
+  - { src: "shared/gitignore.tmpl", dest: ".gitignore" }
+  - { src: "shared/README.md.tmpl", dest: "README.md" }
+  - { src: "shared/LICENSE.tmpl", dest: "LICENSE" }

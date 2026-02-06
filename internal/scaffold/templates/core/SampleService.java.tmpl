@@ -1,0 +1,13 @@
+package {{.BasePackage}}.core.services;
+
+import {{.BasePackage}}.interfaces.dtos.SampleDTO;
+import reactor.core.publisher.Mono;
+
+import java.util.UUID;
+
+public interface SampleService {
+    Mono<SampleDTO> create(SampleDTO dto);
+    Mono<SampleDTO> getById(UUID id);
+    Mono<SampleDTO> update(UUID id, SampleDTO dto);
+    Mono<Void> delete(UUID id);
+}

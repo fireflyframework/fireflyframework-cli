@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: {{.ArtifactId}}
+  r2dbc:
+    url: r2dbc:postgresql://${DB_HOST:{{.DbHost}}}:${DB_PORT:{{.DbPort}}}/${DB_NAME:{{.DbName}}}
+    username: ${DB_USER:{{.DbUser}}}
+    password: ${DB_PASS:{{.DbPass}}}
+  flyway:
+    url: jdbc:postgresql://${DB_HOST:{{.DbHost}}}:${DB_PORT:{{.DbPort}}}/${DB_NAME:{{.DbName}}}
+    user: ${DB_USER:{{.DbUser}}}
+    password: ${DB_PASS:{{.DbPass}}}
+    locations: classpath:db/migration
+
+server:
+  port: ${SERVER_PORT:{{.ServerPort}}}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    root: INFO
+    {{.BasePackage}}: DEBUG
+    org.fireflyframework: DEBUG

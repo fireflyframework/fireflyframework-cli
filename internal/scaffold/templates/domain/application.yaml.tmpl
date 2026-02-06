@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: {{.ArtifactId}}
+
+server:
+  port: ${SERVER_PORT:{{.ServerPort}}}
+
+downstream:
+  services:
+    example-service: ${DOWNSTREAM_EXAMPLE_URL:http://localhost:8081}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    root: INFO
+    {{.BasePackage}}: DEBUG
+    org.fireflyframework: DEBUG

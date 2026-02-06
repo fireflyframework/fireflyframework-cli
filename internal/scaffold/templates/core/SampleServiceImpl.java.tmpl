@@ -1,0 +1,53 @@
+package {{.BasePackage}}.core.services.impl;
+
+import {{.BasePackage}}.models.entities.SampleEntity;
+import {{.BasePackage}}.models.repositories.SampleRepository;
+import {{.BasePackage}}.core.services.SampleService;
+import {{.BasePackage}}.interfaces.dtos.SampleDTO;
+import {{.BasePackage}}.core.mappers.SampleMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Mono;
+
+import java.util.UUID;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+@Transactional
+public class SampleServiceImpl implements SampleService {
+
+    private final SampleRepository repository;
+    private final SampleMapper mapper;
+
+    @Override
+    public Mono<SampleDTO> create(SampleDTO dto) {
+        SampleEntity entity = mapper.toEntity(dto);
+        return repository.save(entity)
+                .map(mapper::toDto);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Mono<SampleDTO> getById(UUID id) {
+        return repository.findById(id)
+                .map(mapper::toDto);
+    }
+
+    @Override
+    public Mono<SampleDTO> update(UUID id, SampleDTO dto) {
+        return repository.findById(id)
+                .flatMap(existing -> {
+                    mapper.updateEntity(dto, existing);
+                    return repository.save(existing);
+                })
+                .map(mapper::toDto);
+    }
+
+    @Override
+    public Mono<Void> delete(UUID id) {
+        return repository.deleteById(id);
+    }
+}

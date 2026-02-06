@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>{{.ParentGroupId}}</groupId>
+        <artifactId>{{.ParentArtifactId}}</artifactId>
+        <version>{{.ParentVersion}}</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>{{.GroupId}}</groupId>
+    <artifactId>{{.ArtifactId}}</artifactId>
+    <version>{{.Version}}</version>
+    <packaging>pom</packaging>
+
+    <name>{{.ProjectName}}</name>
+    <description>{{.Description}}</description>
+
+    <modules>
+        <module>{{.ArtifactId}}-interfaces</module>
+        <module>{{.ArtifactId}}-models</module>
+        <module>{{.ArtifactId}}-core</module>
+        <module>{{.ArtifactId}}-sdk</module>
+        <module>{{.ArtifactId}}-web</module>
+    </modules>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.fireflyframework</groupId>
+                <artifactId>fireflyframework-bom</artifactId>
+                <version>{{.ParentVersion}}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>{{.GroupId}}</groupId>
+                <artifactId>{{.ArtifactId}}-interfaces</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>{{.GroupId}}</groupId>
+                <artifactId>{{.ArtifactId}}-models</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>{{.GroupId}}</groupId>
+                <artifactId>{{.ArtifactId}}-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>{{.GroupId}}</groupId>
+                <artifactId>{{.ArtifactId}}-web</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>{{.GroupId}}</groupId>
+                <artifactId>{{.ArtifactId}}-sdk</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+</project>

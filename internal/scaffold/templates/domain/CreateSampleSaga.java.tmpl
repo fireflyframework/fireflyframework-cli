@@ -1,0 +1,28 @@
+package {{.BasePackage}}.core.workflows;
+
+import {{.BasePackage}}.interfaces.commands.SampleCommand;
+import {{.BasePackage}}.interfaces.dtos.SampleDTO;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.fireflyframework.transactional.saga.annotations.Saga;
+import org.fireflyframework.transactional.saga.annotations.SagaStep;
+import reactor.core.publisher.Mono;
+
+@Slf4j
+@Saga(name = "create-sample")
+@RequiredArgsConstructor
+public class CreateSampleSaga {
+
+    @SagaStep(id = "create", compensate = "compensateCreate")
+    public Mono<SampleDTO> execute(SampleCommand command) {
+        log.info("Saga step: creating sample for {}", command.getName());
+        SampleDTO dto = new SampleDTO();
+        dto.setId(command.getId());
+        return Mono.just(dto);
+    }
+
+    public Mono<Void> compensateCreate(SampleCommand command) {
+        log.warn("Compensating create for {}", command.getName());
+        return Mono.empty();
+    }
+}

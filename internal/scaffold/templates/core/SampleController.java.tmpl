@@ -1,0 +1,40 @@
+package {{.BasePackage}}.web.controllers;
+
+import {{.BasePackage}}.core.services.SampleService;
+import {{.BasePackage}}.interfaces.dtos.SampleDTO;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Mono;
+
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/v1/samples")
+@RequiredArgsConstructor
+public class SampleController {
+
+    private final SampleService sampleService;
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public Mono<SampleDTO> create(@RequestBody SampleDTO dto) {
+        return sampleService.create(dto);
+    }
+
+    @GetMapping("/{id}")
+    public Mono<SampleDTO> getById(@PathVariable UUID id) {
+        return sampleService.getById(id);
+    }
+
+    @PutMapping("/{id}")
+    public Mono<SampleDTO> update(@PathVariable UUID id, @RequestBody SampleDTO dto) {
+        return sampleService.update(id, dto);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public Mono<Void> delete(@PathVariable UUID id) {
+        return sampleService.delete(id);
+    }
+}

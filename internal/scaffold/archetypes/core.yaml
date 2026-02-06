@@ -1,0 +1,137 @@
+name: core
+description: Multi-module core microservice with R2DBC, Flyway, OpenAPI SDK, and reactive services
+multiModule: true
+
+parent:
+  groupId: org.fireflyframework
+  artifactId: fireflyframework-parent
+  version: 1.0.0-SNAPSHOT
+
+modules:
+  - suffix: interfaces
+    description: Shared DTOs, enums, and API contracts
+    packages:
+      - dtos
+      - enums
+    dependencies:
+      - { groupId: "org.fireflyframework", artifactId: "fireflyframework-utils" }
+      - { groupId: "org.fireflyframework", artifactId: "fireflyframework-validators" }
+      - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-validation" }
+      - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-webflux" }
+      - { groupId: "io.swagger.core.v3", artifactId: "swagger-annotations" }
+      - { groupId: "org.mapstruct", artifactId: "mapstruct" }
+      - { groupId: "org.projectlombok", artifactId: "lombok", scope: "provided" }
+      - { groupId: "com.fasterxml.jackson.core", artifactId: "jackson-databind" }
+      - { groupId: "com.fasterxml.jackson.datatype", artifactId: "jackson-datatype-jsr310" }
+    testDependencies:
+      - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-test" }
+      - { groupId: "io.projectreactor", artifactId: "reactor-test" }
+    templates:
+      - { src: "core/interfaces-pom.xml.tmpl", dest: "pom.xml" }
+      - { src: "core/SampleDTO.java.tmpl", dest: "src/main/java/{{.PackagePath}}/interfaces/dtos/SampleDTO.java" }
+      - { src: "core/SampleStatus.java.tmpl", dest: "src/main/java/{{.PackagePath}}/interfaces/enums/SampleStatus.java" }
+
+  - suffix: models
+    description: R2DBC entities, repositories, and Flyway migrations
+    packages:
+      - entities
+      - repositories
+    dependencies:
+      - { groupId: "{{.GroupId}}", artifactId: "{{.ArtifactId}}-interfaces", internal: true }
+      - { groupId: "org.fireflyframework", artifactId: "fireflyframework-r2dbc" }
+      - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-data-r2dbc" }
+      - { groupId: "org.postgresql", artifactId: "r2dbc-postgresql" }
+      - { groupId: "org.postgresql", artifactId: "postgresql" }
+      - { groupId: "org.flywaydb", artifactId: "flyway-core" }
+      - { groupId: "org.projectlombok", artifactId: "lombok", scope: "provided" }
+    templates:
+      - { src: "core/models-pom.xml.tmpl", dest: "pom.xml" }
+      - { src: "core/SampleEntity.java.tmpl", dest: "src/main/java/{{.PackagePath}}/models/entities/SampleEntity.java" }
+      - { src: "core/BaseRepository.java.tmpl", dest: "src/main/java/{{.PackagePath}}/models/repositories/BaseRepository.java" }
+      - { src: "core/SampleRepository.java.tmpl", dest: "src/main/java/{{.PackagePath}}/models/repositories/SampleRepository.java" }
+      - { src: "core/V1__Initial.sql.tmpl", dest: "src/main/resources/db/migration/V1__Initial.sql" }
+
+  - suffix: core
+    description: Services, mappers, and business logic
+    packages:
+      - services
+      - services/impl
+      - mappers
+    dependencies:
+      - { groupId: "{{.GroupId}}", artifactId: "{{.ArtifactId}}-interfaces", internal: true }
+      - { groupId: "{{.GroupId}}", artifactId: "{{.ArtifactId}}-models", internal: true }
+      - { groupId: "org.fireflyframework", artifactId: "fireflyframework-core" }
+      - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-webflux" }
+      - { groupId: "org.mapstruct", artifactId: "mapstruct" }
+      - { groupId: "org.projectlombok", artifactId: "lombok", scope: "provided" }
+    testDependencies:
+      - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-test" }
+      - { groupId: "io.projectreactor", artifactId: "reactor-test" }
+    plugins:
+      - mapstruct-lombok
+    templates:
+      - { src: "core/core-pom.xml.tmpl", dest: "pom.xml" }
+      - { src: "core/SampleService.java.tmpl", dest: "src/main/java/{{.PackagePath}}/core/services/SampleService.java" }
+      - { src: "core/SampleServiceImpl.java.tmpl", dest: "src/main/java/{{.PackagePath}}/core/services/impl/SampleServiceImpl.java" }
+      - { src: "core/SampleMapper.java.tmpl", dest: "src/main/java/{{.PackagePath}}/core/mappers/SampleMapper.java" }
+      - { src: "core/SampleServiceImplTest.java.tmpl", dest: "src/test/java/{{.PackagePath}}/core/services/impl/SampleServiceImplTest.java" }
+
+  - suffix: sdk
+    description: OpenAPI specification and generated client SDK
+    packages: []
+    dependencies:
+      - { groupId: "{{.GroupId}}", artifactId: "{{.ArtifactId}}-web", scope: "provided", internal: true }
+      - { groupId: "io.swagger.core.v3", artifactId: "swagger-annotations" }
+      - { groupId: "com.fasterxml.jackson.core", artifactId: "jackson-databind" }
+      - { groupId: "com.fasterxml.jackson.datatype", artifactId: "jackson-datatype-jsr310" }
+      - { groupId: "jakarta.annotation", artifactId: "jakarta.annotation-api" }
+      - { groupId: "org.projectlombok", artifactId: "lombok", scope: "provided" }
+      - { groupId: "com.squareup.okhttp3", artifactId: "okhttp" }
+      - { groupId: "com.squareup.okhttp3", artifactId: "logging-interceptor" }
+      - { groupId: "org.openapitools", artifactId: "jackson-databind-nullable" }
+    plugins:
+      - openapi-generator
+    templates:
+      - { src: "core/sdk-pom.xml.tmpl", dest: "pom.xml" }
+      - { src: "shared/openapi.yml.tmpl", dest: "src/main/resources/api-spec/openapi.yml" }
+
+  - suffix: web
+    description: Spring Boot application, controllers, and configuration
+    packages:
+      - controllers
+    dependencies:
+      - { groupId: "{{.GroupId}}", artifactId: "{{.ArtifactId}}-core", internal: true }
+      - { groupId: "{{.GroupId}}", artifactId: "{{.ArtifactId}}-interfaces", internal: true }
+      - { groupId: "org.fireflyframework", artifactId: "fireflyframework-web" }
+      - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-webflux" }
+      - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-actuator" }
+      - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-validation" }
+      - { groupId: "org.springdoc", artifactId: "springdoc-openapi-starter-webflux-ui" }
+      - { groupId: "io.micrometer", artifactId: "micrometer-registry-prometheus" }
+      - { groupId: "org.projectlombok", artifactId: "lombok", scope: "provided" }
+    testDependencies:
+      - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-test" }
+      - { groupId: "io.projectreactor", artifactId: "reactor-test" }
+    plugins:
+      - spring-boot
+      - mapstruct-compiler
+      - resources-filter
+    springBoot: true
+    annotations:
+      - "@SpringBootApplication"
+      - "@EnableWebFlux"
+      - "@EnableR2dbcRepositories"
+      - "@EnableR2dbcAuditing"
+      - "@ConfigurationPropertiesScan"
+      - "@OpenAPIDefinition"
+    templates:
+      - { src: "core/web-pom.xml.tmpl", dest: "pom.xml" }
+      - { src: "core/Application.java.tmpl", dest: "src/main/java/{{.PackagePath}}/web/{{.ApplicationClassName}}.java" }
+      - { src: "core/SampleController.java.tmpl", dest: "src/main/java/{{.PackagePath}}/web/controllers/SampleController.java" }
+      - { src: "core/application.yaml.tmpl", dest: "src/main/resources/application.yaml" }
+
+rootTemplates:
+  - { src: "core/root-pom.xml.tmpl", dest: "pom.xml" }
+  - { src: "shared/gitignore.tmpl", dest: ".gitignore" }
+  - { src: "shared/README.md.tmpl", dest: "README.md" }
+  - { src: "shared/LICENSE.tmpl", dest: "LICENSE" }

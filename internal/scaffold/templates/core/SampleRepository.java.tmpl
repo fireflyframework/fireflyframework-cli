@@ -1,0 +1,10 @@
+package {{.BasePackage}}.models.repositories;
+
+import {{.BasePackage}}.models.entities.SampleEntity;
+import org.springframework.stereotype.Repository;
+
+import java.util.UUID;
+
+@Repository
+public interface SampleRepository extends BaseRepository<SampleEntity, UUID> {
+}

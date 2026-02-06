@@ -1,0 +1,63 @@
+openapi: 3.0.1
+info:
+  title: {{.ArtifactId}}
+  description: {{.Description}}
+  contact:
+    name: Development Team
+    email: dev@example.com
+  version: {{.Version}}
+servers:
+  - url: /
+    description: Local Development Environment
+tags:
+  - name: Sample
+    description: Sample API endpoints
+paths:
+  /api/v1/samples:
+    get:
+      tags:
+        - Sample
+      summary: List samples
+      operationId: listSamples
+      responses:
+        '200':
+          description: Successfully retrieved samples
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SampleDTO'
+    post:
+      tags:
+        - Sample
+      summary: Create a sample
+      operationId: createSample
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SampleDTO'
+        required: true
+      responses:
+        '201':
+          description: Sample created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SampleDTO'
+components:
+  schemas:
+    SampleDTO:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        createdAt:
+          type: string
+          format: date-time

@@ -1,0 +1,14 @@
+package {{.BasePackage}}.web;
+
+import org.fireflyframework.transactional.shared.annotations.EnableTransactionalEngine;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication(scanBasePackages = "{{.BasePackage}}")
+@EnableTransactionalEngine
+public class Application {
+
+    public static void main(String[] args) {
+        SpringApplication.run(Application.class, args);
+    }
+}

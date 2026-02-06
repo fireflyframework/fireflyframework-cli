@@ -1,0 +1,387 @@
+// Copyright 2024-2026 Firefly Software Solutions Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package dag
+
+import (
+	"fmt"
+	"strings"
+)
+
+// Graph represents a directed acyclic graph for dependency resolution.
+type Graph struct {
+	nodes    map[string]bool
+	edges    map[string]map[string]bool // edges[A][B] = true means A depends on B
+	reverse  map[string]map[string]bool // reverse[B][A] = true means B is depended upon by A
+	ordered  []string                   // insertion order for deterministic output
+}
+
+// New creates an empty graph.
+func New() *Graph {
+	return &Graph{
+		nodes:   make(map[string]bool),
+		edges:   make(map[string]map[string]bool),
+		reverse: make(map[string]map[string]bool),
+	}
+}
+
+// AddNode adds a node to the graph. Duplicate adds are no-ops.
+func (g *Graph) AddNode(id string) {
+	if g.nodes[id] {
+		return
+	}
+	g.nodes[id] = true
+	g.edges[id] = make(map[string]bool)
+	g.reverse[id] = make(map[string]bool)
+	g.ordered = append(g.ordered, id)
+}
+
+// AddEdge adds a dependency edge: "from" depends on "to".
+// Both nodes are created if they don't already exist.
+func (g *Graph) AddEdge(from, to string) {
+	g.AddNode(from)
+	g.AddNode(to)
+	g.edges[from][to] = true
+	g.reverse[to][from] = true
+}
+
+// NodeCount returns the number of nodes.
+func (g *Graph) NodeCount() int {
+	return len(g.nodes)
+}
+
+// DependenciesOf returns the direct dependencies of a node.
+func (g *Graph) DependenciesOf(id string) []string {
+	deps := make([]string, 0, len(g.edges[id]))
+	for dep := range g.edges[id] {
+		deps = append(deps, dep)
+	}
+	return deps
+}
+
+// DependentsOf returns the nodes that directly depend on id.
+func (g *Graph) DependentsOf(id string) []string {
+	deps := make([]string, 0, len(g.reverse[id]))
+	for dep := range g.reverse[id] {
+		deps = append(deps, dep)
+	}
+	return deps
+}
+
+// TopologicalSort returns nodes in a valid build order using Kahn's algorithm.
+// Returns an error if the graph contains a cycle.
+func (g *Graph) TopologicalSort() ([]string, error) {
+	inDegree := make(map[string]int, len(g.nodes))
+	for id := range g.nodes {
+		inDegree[id] = len(g.edges[id])
+	}
+
+	// Seed queue with nodes that have no dependencies (in insertion order for determinism)
+	queue := make([]string, 0)
+	for _, id := range g.ordered {
+		if inDegree[id] == 0 {
+			queue = append(queue, id)
+		}
+	}
+
+	sorted := make([]string, 0, len(g.nodes))
+	for len(queue) > 0 {
+		node := queue[0]
+		queue = queue[1:]
+		sorted = append(sorted, node)
+
+		// For each node that depends on this one, reduce in-degree
+		for dependent := range g.reverse[node] {
+			inDegree[dependent]--
+			if inDegree[dependent] == 0 {
+				queue = append(queue, dependent)
+			}
+		}
+	}
+
+	if len(sorted) != len(g.nodes) {
+		cycle := g.detectCycle()
+		return nil, fmt.Errorf("dependency cycle detected: %s", strings.Join(cycle, " → "))
+	}
+
+	return sorted, nil
+}
+
+// Layers returns nodes grouped by depth level.
+// Layer 0 contains nodes with no dependencies.
+// Layer N contains nodes whose dependencies are all in layers 0..N-1.
+// Nodes within the same layer are independent and can be processed in parallel.
+func (g *Graph) Layers() ([][]string, error) {
+	inDegree := make(map[string]int, len(g.nodes))
+	for id := range g.nodes {
+		inDegree[id] = len(g.edges[id])
+	}
+
+	// Seed with zero-dependency nodes (in insertion order for determinism)
+	current := make([]string, 0)
+	for _, id := range g.ordered {
+		if inDegree[id] == 0 {
+			current = append(current, id)
+		}
+	}
+
+	var layers [][]string
+	visited := 0
+
+	for len(current) > 0 {
+		layers = append(layers, current)
+		visited += len(current)
+
+		next := make([]string, 0)
+		for _, node := range current {
+			for dependent := range g.reverse[node] {
+				inDegree[dependent]--
+				if inDegree[dependent] == 0 {
+					next = append(next, dependent)
+				}
+			}
+		}
+		current = next
+	}
+
+	if visited != len(g.nodes) {
+		cycle := g.detectCycle()
+		return nil, fmt.Errorf("dependency cycle detected: %s", strings.Join(cycle, " → "))
+	}
+
+	return layers, nil
+}
+
+// FlatOrder returns a flat list of nodes in valid dependency order (topological sort).
+func (g *Graph) FlatOrder() ([]string, error) {
+	return g.TopologicalSort()
+}
+
+// detectCycle finds and returns one cycle in the graph using DFS.
+func (g *Graph) detectCycle() []string {
+	const (
+		white = 0 // unvisited
+		gray  = 1 // in current path
+		black = 2 // fully processed
+	)
+
+	color := make(map[string]int, len(g.nodes))
+	parent := make(map[string]string, len(g.nodes))
+
+	var cycle []string
+
+	var dfs func(node string) bool
+	dfs = func(node string) bool {
+		color[node] = gray
+		for dep := range g.edges[node] {
+			if color[dep] == gray {
+				// Found cycle: reconstruct
+				cycle = []string{dep, node}
+				cur := node
+				for cur != dep {
+					cur = parent[cur]
+					cycle = append(cycle, cur)
+				}
+				// Reverse to get correct order
+				for i, j := 0, len(cycle)-1; i < j; i, j = i+1, j-1 {
+					cycle[i], cycle[j] = cycle[j], cycle[i]
+				}
+				return true
+			}
+			if color[dep] == white {
+				parent[dep] = node
+				if dfs(dep) {
+					return true
+				}
+			}
+		}
+		color[node] = black
+		return false
+	}
+
+	for _, id := range g.ordered {
+		if color[id] == white {
+			if dfs(id) {
+				return cycle
+			}
+		}
+	}
+
+	return []string{"unknown cycle"}
+}
+
+// FrameworkGraph returns the pre-wired dependency graph for all fireflyframework repos.
+func FrameworkGraph() *Graph {
+	g := New()
+
+	// Aliases for readability
+	const (
+		parent           = "fireflyframework-parent"
+		bom              = "fireflyframework-bom"
+		utils            = "fireflyframework-utils"
+		validators       = "fireflyframework-validators"
+		plugins          = "fireflyframework-plugins"
+		cache            = "fireflyframework-cache"
+		r2dbc            = "fireflyframework-r2dbc"
+		eda              = "fireflyframework-eda"
+		cqrs             = "fireflyframework-cqrs"
+		eventsourcing    = "fireflyframework-eventsourcing"
+		transactionalEng = "fireflyframework-transactional-engine"
+		client           = "fireflyframework-client"
+		web              = "fireflyframework-web"
+		core             = "fireflyframework-core"
+		domain           = "fireflyframework-domain"
+		data             = "fireflyframework-data"
+		workflow         = "fireflyframework-workflow"
+		ecm              = "fireflyframework-ecm"
+		ecmEsigAdobe     = "fireflyframework-ecm-esignature-adobe-sign"
+		ecmEsigDocusign  = "fireflyframework-ecm-esignature-docusign"
+		ecmEsigLogalty   = "fireflyframework-ecm-esignature-logalty"
+		ecmStorageAWS    = "fireflyframework-ecm-storage-aws"
+		ecmStorageAzure  = "fireflyframework-ecm-storage-azure"
+		idp              = "fireflyframework-idp"
+		idpCognito       = "fireflyframework-idp-aws-cognito"
+		idpInternalDB    = "fireflyframework-idp-internal-db"
+		idpKeycloak      = "fireflyframework-idp-keycloak"
+		notifications    = "fireflyframework-notifications"
+		notifFirebase    = "fireflyframework-notifications-firebase"
+		notifResend      = "fireflyframework-notifications-resend"
+		notifSendgrid    = "fireflyframework-notifications-sendgrid"
+		notifTwilio      = "fireflyframework-notifications-twilio"
+		ruleEngine       = "fireflyframework-rule-engine"
+		webhooks         = "fireflyframework-webhooks"
+		callbacks        = "fireflyframework-callbacks"
+		configServer     = "fireflyframework-config-server"
+		application      = "fireflyframework-application"
+		backoffice       = "fireflyframework-backoffice"
+	)
+
+	// ── Layer 0: root ──────────────────────────────────────────────────
+	g.AddNode(parent)
+
+	// ── Layer 1: bom → parent ─────────────────────────────────────────
+	g.AddEdge(bom, parent)
+
+	// ── Layer 2: utils → bom ──────────────────────────────────────────
+	g.AddEdge(utils, bom)
+
+	// ── Layer 3: leaf modules that depend only on utils ────────────────
+	for _, mod := range []string{
+		validators, plugins, cache, r2dbc, eda, cqrs,
+		client, ecm, idp, configServer,
+	} {
+		g.AddEdge(mod, utils)
+	}
+
+	// ── Layer 4: modules with inter-module dependencies ────────────────
+
+	// web depends on utils + cache
+	g.AddEdge(web, utils)
+	g.AddEdge(web, cache)
+
+	// eventsourcing depends on cqrs, eda, r2dbc, cache
+	g.AddEdge(eventsourcing, cqrs)
+	g.AddEdge(eventsourcing, eda)
+	g.AddEdge(eventsourcing, r2dbc)
+	g.AddEdge(eventsourcing, cache)
+
+	// workflow depends on cache, eda
+	g.AddEdge(workflow, cache)
+	g.AddEdge(workflow, eda)
+
+	// application depends on client, cache, cqrs, eda
+	g.AddEdge(application, client)
+	g.AddEdge(application, cache)
+	g.AddEdge(application, cqrs)
+	g.AddEdge(application, eda)
+
+	// ECM implementation modules
+	g.AddEdge(ecmEsigAdobe, ecm)
+	g.AddEdge(ecmEsigDocusign, ecm)
+	g.AddEdge(ecmEsigLogalty, ecm)
+	g.AddEdge(ecmStorageAWS, ecm)
+	g.AddEdge(ecmStorageAzure, ecm)
+
+	// IDP implementation modules
+	g.AddEdge(idpCognito, idp)
+	g.AddEdge(idpInternalDB, idp)
+	g.AddEdge(idpKeycloak, idp)
+
+	// ── Layer 5: transactional engine → eventsourcing ──────────────────
+	g.AddEdge(transactionalEng, eventsourcing)
+
+	// ── Layer 6: modules that depend on transactional-engine ───────────
+
+	// core depends on cqrs, eda, transactional-engine
+	g.AddEdge(core, cqrs)
+	g.AddEdge(core, eda)
+	g.AddEdge(core, transactionalEng)
+
+	// domain depends on client, cqrs, eda, transactional-engine, validators
+	g.AddEdge(domain, client)
+	g.AddEdge(domain, cqrs)
+	g.AddEdge(domain, eda)
+	g.AddEdge(domain, transactionalEng)
+	g.AddEdge(domain, validators)
+
+	// data depends on cache, client, cqrs, eda, transactional-engine
+	g.AddEdge(data, cache)
+	g.AddEdge(data, client)
+	g.AddEdge(data, cqrs)
+	g.AddEdge(data, eda)
+	g.AddEdge(data, transactionalEng)
+
+	// ── Layer 7: modules that depend on core/domain/data ───────────────
+
+	// notifications depends on core
+	g.AddEdge(notifications, core)
+
+	// rule-engine depends on cache, core, r2dbc, utils, validators, web
+	g.AddEdge(ruleEngine, utils)
+	g.AddEdge(ruleEngine, cache)
+	g.AddEdge(ruleEngine, core)
+	g.AddEdge(ruleEngine, r2dbc)
+	g.AddEdge(ruleEngine, validators)
+	g.AddEdge(ruleEngine, web)
+
+	// webhooks depends on cache, core, eda, web
+	g.AddEdge(webhooks, cache)
+	g.AddEdge(webhooks, core)
+	g.AddEdge(webhooks, eda)
+	g.AddEdge(webhooks, web)
+
+	// callbacks depends on core, eda, r2dbc, web
+	g.AddEdge(callbacks, core)
+	g.AddEdge(callbacks, eda)
+	g.AddEdge(callbacks, r2dbc)
+	g.AddEdge(callbacks, web)
+
+	// backoffice depends on core, domain, data, client, cache, cqrs, eda, application
+	g.AddEdge(backoffice, core)
+	g.AddEdge(backoffice, domain)
+	g.AddEdge(backoffice, data)
+	g.AddEdge(backoffice, client)
+	g.AddEdge(backoffice, cache)
+	g.AddEdge(backoffice, cqrs)
+	g.AddEdge(backoffice, eda)
+	g.AddEdge(backoffice, application)
+
+	// ── Layer 8: notification implementations → notifications ──────────
+	g.AddEdge(notifFirebase, notifications)
+	g.AddEdge(notifResend, notifications)
+	g.AddEdge(notifSendgrid, notifications)
+	g.AddEdge(notifTwilio, notifications)
+
+	return g
+}
