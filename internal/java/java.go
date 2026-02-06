@@ -28,7 +28,7 @@ import (
 
 // Installation represents a detected Java installation on the system.
 type Installation struct {
-	Version  int    // Major version (e.g. 21)
+	Version  int    // Major version (e.g. 25)
 	Home     string // JAVA_HOME path
 	Vendor   string // Vendor hint extracted from path
 	Default  bool   // Whether this is the current default
@@ -100,8 +100,8 @@ func listDarwin() []Installation {
 	var installs []Installation
 	currentVer, _ := CurrentVersion()
 
-	// Each line looks like: "    21.0.1 (arm64) "AdoptOpenJDK" - "OpenJDK ..." /path/to/jdk"
-	// or: "    21.0.1, arm64:	"Temurin" - "OpenJDK 21.0.1" /Library/Java/..."
+	// Each line looks like: "    25.0.1 (arm64) "AdoptOpenJDK" - "OpenJDK ..." /path/to/jdk"
+	// or: "    25.0.1, arm64:	"Temurin" - "OpenJDK 25.0.1" /Library/Java/..."
 	re := regexp.MustCompile(`(\d+)[\d.]*[^/]+(/.+)`)
 	for _, line := range strings.Split(string(out), "\n") {
 		line = strings.TrimSpace(line)
@@ -162,7 +162,7 @@ func detectLinux(version string) (string, error) {
 		for _, line := range strings.Split(string(out), "\n") {
 			line = strings.TrimSpace(line)
 			if strings.Contains(line, version) {
-				// /usr/lib/jvm/java-21-openjdk-amd64/bin/java → parent twice
+				// /usr/lib/jvm/java-25-openjdk-amd64/bin/java → parent twice
 				home := filepath.Dir(filepath.Dir(line))
 				if isValidJavaHome(home) {
 					return home, nil
@@ -345,7 +345,7 @@ func parseMajorVersion(output string) (int, error) {
 	if len(matches) >= 2 {
 		return strconv.Atoi(matches[1])
 	}
-	// Try standalone number pattern (e.g. "openjdk 21 2023-09-19")
+	// Try standalone number pattern (e.g. "openjdk 25 2025-09-16")
 	re2 := regexp.MustCompile(`(?:java|jdk|openjdk)\s+(\d+)`)
 	matches2 := re2.FindStringSubmatch(strings.ToLower(output))
 	if len(matches2) >= 2 {
