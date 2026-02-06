@@ -84,7 +84,7 @@ func runSetup(cmd *cobra.Command, args []string) error {
 		javaVer, _ := java.CurrentVersion()
 		checks = append(checks, ui.CheckResult{Name: "Java", Status: "pass", Detail: fmt.Sprintf("version %d", javaVer)})
 	} else {
-		checks = append(checks, ui.CheckResult{Name: "Java", Status: "fail", Detail: "not found — install Java 25 (21+ minimum) first"})
+		checks = append(checks, ui.CheckResult{Name: "Java", Status: "fail", Detail: "not found — install Java 21+ (25 recommended) first"})
 	}
 
 	p.PrintChecks(checks)

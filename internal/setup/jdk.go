@@ -32,7 +32,7 @@ func SelectJDK(configuredVersion string) (string, error) {
 		// Fall back to auto-detection
 		home, err := java.DetectJavaHome(configuredVersion)
 		if err != nil {
-			return "", fmt.Errorf("no Java installations found — install Java %s or set JAVA_HOME", configuredVersion)
+		return "", fmt.Errorf("no Java installations found — install Java %s (or any 21+) and set JAVA_HOME", configuredVersion)
 		}
 		return home, nil
 	}

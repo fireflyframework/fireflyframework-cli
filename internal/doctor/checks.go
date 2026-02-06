@@ -114,14 +114,17 @@ func checkEnvironment() ui.CheckResult {
 	return ui.CheckResult{Name: "Environment", Status: "pass", Detail: detail}
 }
 
+// MinJavaVersion is the absolute minimum Java version the framework supports.
+const MinJavaVersion = 21
+
 func checkJava(cfg *config.Config) ui.CheckResult {
-	requiredVer := 25
+	defaultVer := 25
 	if cfg != nil && cfg.JavaVersion != "" {
 		if v, err := strconv.Atoi(cfg.JavaVersion); err == nil {
-			requiredVer = v
+			defaultVer = v
 		}
 	}
-	checkName := fmt.Sprintf("Java %d+", requiredVer)
+	checkName := fmt.Sprintf("Java %d+ (default %d)", MinJavaVersion, defaultVer)
 
 	out, err := exec.Command("java", "--version").Output()
 	if err != nil {
@@ -132,10 +135,13 @@ func checkJava(cfg *config.Config) ui.CheckResult {
 	matches := re.FindStringSubmatch(version)
 	if len(matches) >= 2 {
 		major, _ := strconv.Atoi(matches[1])
-		if major >= requiredVer {
+		if major >= defaultVer {
 			return ui.CheckResult{Name: checkName, Status: "pass", Detail: fmt.Sprintf("Java %d", major)}
 		}
-		return ui.CheckResult{Name: checkName, Status: "fail", Detail: fmt.Sprintf("Java %d (need %d+)", major, requiredVer)}
+		if major >= MinJavaVersion {
+			return ui.CheckResult{Name: checkName, Status: "warn", Detail: fmt.Sprintf("Java %d (compatible, but %d recommended)", major, defaultVer)}
+		}
+		return ui.CheckResult{Name: checkName, Status: "fail", Detail: fmt.Sprintf("Java %d (need %d+)", major, MinJavaVersion)}
 	}
 	return ui.CheckResult{Name: checkName, Status: "warn", Detail: "could not parse version"}
 }
@@ -143,12 +149,16 @@ func checkJava(cfg *config.Config) ui.CheckResult {
 func checkJavaHome(cfg *config.Config) ui.CheckResult {
 	javaHome := os.Getenv("JAVA_HOME")
 	if javaHome == "" {
-		// Try to detect
-	ver := "25"
+		// Try configured version first, then fall back to minimum
+		ver := "25"
 		if cfg != nil && cfg.JavaVersion != "" {
 			ver = cfg.JavaVersion
 		}
 		detected, err := java.DetectJavaHome(ver)
+		if err != nil {
+			// Fall back: try to find any 21+ JDK
+			detected, err = java.DetectJavaHome(strconv.Itoa(MinJavaVersion))
+		}
 		if err != nil {
 			return ui.CheckResult{Name: "JAVA_HOME", Status: "warn", Detail: "not set (set JAVA_HOME or use 'flywork config set java_version')"}
 		}
