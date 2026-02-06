@@ -129,7 +129,7 @@ func (p *Printer) SummaryBox(title string, lines []string) {
 	sep := borderStyle.Render("  ├" + strings.Repeat("─", width) + "┤")
 
 	pad := func(s string) string {
-		gap := width - len(s) - 2
+		gap := width - lipgloss.Width(s) - 2
 		if gap < 0 {
 			gap = 0
 		}
