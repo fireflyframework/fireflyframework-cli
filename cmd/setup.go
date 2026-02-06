@@ -388,6 +388,8 @@ func runSetup(cmd *cobra.Command, args []string) error {
 		}
 
 		p.Newline()
+		p.Info(fmt.Sprintf("Build logs: %s", setup.LogsDir()))
+		p.Newline()
 		if !ui.Confirm("Retry failed repositories now?", true) {
 			break
 		}
@@ -457,18 +459,25 @@ func runSetup(cmd *cobra.Command, args []string) error {
 		status = "Setup Incomplete"
 	}
 
-	p.SummaryBox(status, []string{
+	summaryLines := []string{
 		fmt.Sprintf("Repositories  %d", s.Total),
 		fmt.Sprintf("Cloned        %d  (skipped %d, failed %d)", s.ClonesOK, skipped, s.ClonesFailed),
 		fmt.Sprintf("Installed     %d  (skipped %d, failed %d)", s.InstallsOK, installSkipped, s.InstallsFailed),
 		fmt.Sprintf("DAG layers    %d", len(dagLayers)),
 		fmt.Sprintf("Total time    %s", elapsed),
 		fmt.Sprintf("Manifest      %s", manifestPath),
-	})
+	}
+	if s.InstallsFailed > 0 {
+		summaryLines = append(summaryLines, fmt.Sprintf("Build logs    %s", setup.LogsDir()))
+	}
+	p.SummaryBox(status, summaryLines)
 
 	if s.ClonesFailed > 0 || s.InstallsFailed > 0 {
 		p.Newline()
 		p.Info("Run 'flywork setup --retry' to retry failed repositories")
+		if s.InstallsFailed > 0 {
+			p.Info(fmt.Sprintf("Check build logs for details: %s", setup.LogsDir()))
+		}
 	}
 
 	return nil

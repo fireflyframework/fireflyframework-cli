@@ -109,7 +109,7 @@ func listDarwin() []Installation {
 		if len(matches) >= 3 {
 			major, _ := strconv.Atoi(matches[1])
 			home := strings.TrimSpace(matches[2])
-			if major > 0 && home != "" {
+			if major > 0 && home != "" && isValidJavaHome(home) {
 				vendor := extractVendor(home)
 				installs = append(installs, Installation{
 					Version: major,

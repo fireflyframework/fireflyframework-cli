@@ -60,13 +60,15 @@ func Confirm(label string, defaultYes bool) bool {
 func Select(label string, options []string, defaultIdx int) string {
 	fmt.Printf("  %s %s\n", StylePrimary.Render("?"), label)
 	for i, opt := range options {
-		marker := "  "
+		num := fmt.Sprintf("%d", i+1)
 		if i == defaultIdx {
-			marker = StylePrimary.Render("▸ ")
+			fmt.Printf("    %s %s\n", StylePrimary.Render("▸ "+num+"."), opt)
+		} else {
+			fmt.Printf("    %s %s\n", StyleMuted.Render("  "+num+"."), opt)
 		}
-		fmt.Printf("    %s%s\n", marker, opt)
 	}
-	fmt.Printf("  %s: ", StyleMuted.Render("Enter number (1-"+fmt.Sprintf("%d", len(options))+")"))
+	defaultHint := fmt.Sprintf(", default=%d", defaultIdx+1)
+	fmt.Printf("  %s: ", StyleMuted.Render(fmt.Sprintf("Enter number (1-%d%s)", len(options), defaultHint)))
 
 	input, _ := reader.ReadString('\n')
 	input = strings.TrimSpace(input)
