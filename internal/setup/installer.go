@@ -15,9 +15,12 @@
 package setup
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
+	"github.com/fireflyframework/fireflyframework-cli/internal/config"
 	"github.com/fireflyframework/fireflyframework-cli/internal/dag"
 	"github.com/fireflyframework/fireflyframework-cli/internal/maven"
 )
@@ -27,6 +30,7 @@ type InstallResult struct {
 	Repo    string
 	Skipped bool
 	Error   error
+	LogFile string // path to build log (populated on failure)
 }
 
 // InstallStartCallback is invoked before each repo install begins.
@@ -96,6 +100,7 @@ func InstallAllDAG(reposDir, javaHome string, skipTests bool, manifest *Manifest
 
 			// Skip repos that have no pom.xml (empty or uninitialized)
 			var installErr error
+			var buildOutput []byte
 			pomPath := filepath.Join(dir, "pom.xml")
 			if _, serr := os.Stat(pomPath); os.IsNotExist(serr) {
 				// no pom.xml — skip silently
@@ -103,9 +108,9 @@ func InstallAllDAG(reposDir, javaHome string, skipTests bool, manifest *Manifest
 					manifest.MarkInstallSkipped(repo)
 				}
 			} else if javaHome != "" {
-				installErr = maven.InstallQuietWithJava(dir, javaHome, skipTests)
+				buildOutput, installErr = maven.InstallQuietWithJavaOutput(dir, javaHome, skipTests)
 			} else {
-				installErr = maven.InstallQuiet(dir, skipTests)
+				buildOutput, installErr = maven.InstallQuietOutput(dir, skipTests)
 			}
 
 			if manifest != nil && installErr != nil {
@@ -114,7 +119,13 @@ func InstallAllDAG(reposDir, javaHome string, skipTests bool, manifest *Manifest
 				manifest.MarkInstall(repo, nil)
 			}
 
-			r := InstallResult{Repo: repo, Error: installErr}
+			// Write build log on failure
+			var logFile string
+			if installErr != nil && len(buildOutput) > 0 {
+				logFile = writeBuildLog(repo, buildOutput)
+			}
+
+			r := InstallResult{Repo: repo, Error: installErr, LogFile: logFile}
 			results = append(results, r)
 			if manifest != nil {
 				_ = manifest.Save()
@@ -126,4 +137,27 @@ func InstallAllDAG(reposDir, javaHome string, skipTests bool, manifest *Manifest
 	}
 
 	return results, layers, nil
+}
+
+// LogsDir returns the path to the build logs directory (~/.flywork/logs).
+func LogsDir() string {
+	return filepath.Join(config.FlyworkHome(), "logs")
+}
+
+// writeBuildLog writes Maven output to ~/.flywork/logs/<repo>.log and returns
+// the log file path. Returns "" if writing fails.
+func writeBuildLog(repo string, output []byte) string {
+	logsDir := LogsDir()
+	if err := os.MkdirAll(logsDir, 0755); err != nil {
+		return ""
+	}
+	logFile := filepath.Join(logsDir, repo+".log")
+
+	header := fmt.Sprintf("=== Build log for %s ===\n=== %s ===\n\n", repo, time.Now().Format(time.RFC3339))
+	content := append([]byte(header), output...)
+
+	if err := os.WriteFile(logFile, content, 0644); err != nil {
+		return ""
+	}
+	return logFile
 }

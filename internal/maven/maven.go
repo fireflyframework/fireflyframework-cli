@@ -15,6 +15,7 @@
 package maven
 
 import (
+	"bytes"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -79,6 +80,33 @@ func InstallQuietWithJava(dir, javaHome string, skipTests bool) error {
 		cmd.Env = appendJavaHome(os.Environ(), javaHome)
 	}
 	return cmd.Run()
+}
+
+// InstallQuietWithJavaOutput runs mvn clean install silently with a specific JAVA_HOME
+// and returns the combined stdout+stderr output along with any error.
+func InstallQuietWithJavaOutput(dir, javaHome string, skipTests bool) ([]byte, error) {
+	cmd := exec.Command("mvn", buildInstallArgs(skipTests)...)
+	cmd.Dir = dir
+	if javaHome != "" {
+		cmd.Env = appendJavaHome(os.Environ(), javaHome)
+	}
+	var buf bytes.Buffer
+	cmd.Stdout = &buf
+	cmd.Stderr = &buf
+	err := cmd.Run()
+	return buf.Bytes(), err
+}
+
+// InstallQuietOutput runs mvn clean install silently and returns the combined
+// stdout+stderr output along with any error.
+func InstallQuietOutput(dir string, skipTests bool) ([]byte, error) {
+	cmd := exec.Command("mvn", buildInstallArgs(skipTests)...)
+	cmd.Dir = dir
+	var buf bytes.Buffer
+	cmd.Stdout = &buf
+	cmd.Stderr = &buf
+	err := cmd.Run()
+	return buf.Bytes(), err
 }
 
 // buildInstallArgs returns the Maven arguments for clean install.
