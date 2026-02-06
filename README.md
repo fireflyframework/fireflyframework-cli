@@ -142,7 +142,7 @@ View and manage CLI configuration stored in `~/.flywork/config.yaml`.
 ```bash
 flywork config                          # show all configuration
 flywork config get java_version         # get a single value
-flywork config set java_version 21      # set a value
+flywork config set java_version 25      # set a value
 flywork config set parent_version 1.0.0-SNAPSHOT
 flywork config reset                    # reset to defaults
 ```
@@ -187,7 +187,7 @@ Configuration is stored in `~/.flywork/config.yaml`.
 | `repos_path` | `~/.flywork/repos` | Where framework repos are cloned |
 | `github_org` | `fireflyframework` | GitHub organization name |
 | `default_group_id` | `org.fireflyframework` | Default Maven groupId for new projects |
-| `java_version` | `21` | Target Java version for compilation |
+| `java_version` | `25` | Target Java version for compilation |
 | `parent_version` | `1.0.0-SNAPSHOT` | Parent POM version for archetypes |
 | `cli_auto_update` | `false` | Auto-check for CLI updates on launch |
 
@@ -202,7 +202,7 @@ The CLI automatically detects installed Java versions:
 Change the required Java version:
 
 ```bash
-flywork config set java_version 21
+flywork config set java_version 25
 ```
 
 All `setup` and `update` commands will automatically resolve the correct `JAVA_HOME` for that version.
