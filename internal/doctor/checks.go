@@ -115,7 +115,7 @@ func checkEnvironment() ui.CheckResult {
 }
 
 func checkJava(cfg *config.Config) ui.CheckResult {
-	requiredVer := 21
+	requiredVer := 25
 	if cfg != nil && cfg.JavaVersion != "" {
 		if v, err := strconv.Atoi(cfg.JavaVersion); err == nil {
 			requiredVer = v
@@ -144,7 +144,7 @@ func checkJavaHome(cfg *config.Config) ui.CheckResult {
 	javaHome := os.Getenv("JAVA_HOME")
 	if javaHome == "" {
 		// Try to detect
-		ver := "21"
+	ver := "25"
 		if cfg != nil && cfg.JavaVersion != "" {
 			ver = cfg.JavaVersion
 		}
