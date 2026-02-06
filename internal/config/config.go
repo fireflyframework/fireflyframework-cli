@@ -115,7 +115,7 @@ func DefaultConfig() *Config {
 		ReposPath:     filepath.Join(HomeDir(), FireflyDir, ReposDir),
 		GithubOrg:     "fireflyframework",
 		DefaultGroup:  "org.fireflyframework",
-		JavaVersion:   "21",
+	JavaVersion:   "25",
 		ParentVersion: "1.0.0-SNAPSHOT",
 	}
 }
