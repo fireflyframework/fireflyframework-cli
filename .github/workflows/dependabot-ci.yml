@@ -1,0 +1,11 @@
+name: Dependabot CI
+on:
+  pull_request_target:
+    branches: [develop, main]
+jobs:
+  build-and-test:
+    if: github.actor == 'dependabot[bot]'
+    uses: fireflyframework/.github/.github/workflows/go-ci.yml@main
+    with:
+      go-version: '1.25'
+      checkout-ref: ${{ github.event.pull_request.head.sha }}
