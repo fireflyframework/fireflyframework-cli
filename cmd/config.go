@@ -26,21 +26,55 @@ import (
 var configCmd = &cobra.Command{
 	Use:   "config",
 	Short: "View and manage Flywork CLI configuration",
-	Long:  "View all configuration values. Use subcommands to get, set, or reset individual keys.",
-	RunE:  runConfigList,
+	Long: `View all configuration values. Use subcommands to get, set, or reset individual
+keys. Configuration is stored in ~/.flywork/config.yaml.
+
+Available Subcommands:
+  get <key>          Get a single configuration value
+  set <key> <value>  Set a configuration value
+  reset              Reset all configuration to defaults
+
+Valid configuration keys:
+  repos_path         Where framework repos are cloned (default: ~/.flywork/repos)
+  github_org         GitHub organization name (default: fireflyframework)
+  default_group_id   Default Maven groupId for new projects (default: org.fireflyframework)
+  java_version       Target Java version for compilation (default: 25)
+  parent_version     Parent POM version for archetypes (default: 26.01.01)
+  cli_auto_update    Auto-check for CLI updates on launch (default: false)
+  branch             Git branch to clone during setup (default: develop)
+
+Examples:
+  flywork config                              Show all configuration
+  flywork config get java_version             Get a single value
+  flywork config set java_version 25          Set a value
+  flywork config set branch main              Change the default branch
+  flywork config reset                        Reset to defaults`,
+	RunE: runConfigList,
 }
 
 var configGetCmd = &cobra.Command{
-	Use:       "get <key>",
-	Short:     "Get a configuration value",
+	Use:   "get <key>",
+	Short: "Get a configuration value",
+	Long: `Prints the value of a single configuration key to stdout with no formatting.
+This is useful for scripting and CI/CD integration.
+
+Valid keys: repos_path, github_org, default_group_id, java_version,
+parent_version, cli_auto_update, branch`,
 	Args:      cobra.ExactArgs(1),
 	ValidArgs: config.ValidKeys,
 	RunE:      runConfigGet,
 }
 
 var configSetCmd = &cobra.Command{
-	Use:       "set <key> <value>",
-	Short:     "Set a configuration value",
+	Use:   "set <key> <value>",
+	Short: "Set a configuration value",
+	Long: `Sets a configuration key to the specified value and saves it to
+~/.flywork/config.yaml.
+
+Valid keys: repos_path, github_org, default_group_id, java_version,
+parent_version, cli_auto_update, branch
+
+For cli_auto_update, accepted values are: true, false, 1, 0, yes, no.`,
 	Args:      cobra.ExactArgs(2),
 	ValidArgs: config.ValidKeys,
 	RunE:      runConfigSet,
@@ -49,7 +83,9 @@ var configSetCmd = &cobra.Command{
 var configResetCmd = &cobra.Command{
 	Use:   "reset",
 	Short: "Reset configuration to defaults",
-	RunE:  runConfigReset,
+	Long: `Resets all configuration keys to their default values and saves the result
+to ~/.flywork/config.yaml. The default values are displayed after the reset.`,
+	RunE: runConfigReset,
 }
 
 func init() {

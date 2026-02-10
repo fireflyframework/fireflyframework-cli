@@ -32,6 +32,9 @@ var (
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print CLI version information",
+	Long: `Prints the Flywork CLI version, git commit hash, build date, Go version, and
+operating system/architecture. Version information is embedded at build time
+via ldflags.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		p := ui.NewPrinter()
 		p.KeyValue("Version", Version)

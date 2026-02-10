@@ -53,24 +53,41 @@ make install
 
 ### `flywork setup`
 
-Bootstraps the entire Firefly Framework into your local environment. Clones all **34 framework repositories** in **DAG-resolved dependency order** and installs them to your local Maven cache (`~/.m2`).
+Bootstraps the entire Firefly Framework into your local environment. Clones all **38 framework repositories** in **DAG-resolved dependency order** and installs them to your local Maven cache (`~/.m2`).
 
 The CLI resolves a dependency graph across all repositories, groups them into layers, and processes each layer sequentially to guarantee correct compilation order. Progress is shown with real-time progress bars, per-repo spinners with elapsed time, and a final summary box.
 
 ```bash
-flywork setup                  # full setup (prompts whether to run tests)
+flywork setup                  # full interactive setup (prompts whether to run tests)
 flywork setup --skip-tests     # skip tests during Maven install
+flywork setup --retry          # retry only previously failed repositories
+flywork setup --fresh          # ignore previous manifest, start from scratch
+flywork setup --fetch-updates  # also fetch updates for already-cloned repos
+flywork setup --jdk /path      # use a specific JDK instead of auto-detection
 flywork setup -v               # verbose: show DAG layers and per-repo status
 ```
 
 When `--skip-tests` is not provided, the CLI interactively asks whether to run tests (default: **yes**).
 
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--skip-tests` | `false` | Skip running tests during Maven install |
+| `--retry` | `false` | Retry only previously failed repositories |
+| `--fresh` | `false` | Force a fresh setup, ignoring any previous manifest |
+| `--fetch-updates` | `false` | Fetch latest changes for already-cloned repos |
+| `--jdk` | `""` | Explicit JAVA_HOME path (skip JDK auto-detection) |
+
 **What it does:**
 
-1. Resolves the dependency DAG (34 repos across 6 layers)
-2. **Phase 1** — Clones all repos layer-by-layer with a live progress bar
-3. **Phase 2** — Runs `mvn clean install` on each repo in dependency order (with or without tests), with per-repo spinners showing elapsed time
-4. Displays a summary box with total time, repos cloned/installed, and layer count
+1. **Preflight** — Verifies Git, Maven, and Java are installed
+2. **Resume/Retry Detection** — Detects previous setup manifest and offers to resume, retry, or restart
+3. **JDK Selection** — Auto-detects installed JDK versions matching the configured `java_version`
+4. **Cloning** — Resolves the dependency DAG (38 repos across 6 layers) and clones all repos layer-by-layer
+5. **Installing** — Runs `mvn clean install` on each repo in dependency order with per-repo spinners
+6. **Post-Install Retry** — If any repos fail, offers to retry them immediately
+7. Displays a summary box with total time, repos cloned/installed, and layer count
 
 ### `flywork create [archetype]`
 
@@ -84,13 +101,27 @@ Scaffolds a new project from one of four YAML-driven archetypes:
 | **library**     | Single-module library with Spring Boot auto-configuration            |
 
 ```bash
-flywork create core
+flywork create                                              # fully interactive mode
+flywork create core                                         # core archetype with prompts
 flywork create domain --group-id com.example --artifact-id my-service
 flywork create application -g com.example -a my-app -d "My Application"
 flywork create library -g com.example -a my-lib --no-git
+flywork create core --version 1.0.0 -o ./output-dir         # custom version and output
 ```
 
-If no flags are provided, the CLI enters interactive mode with prompts for archetype selection, group ID, artifact ID, package name, and description.
+If no archetype or flags are provided, the CLI enters interactive mode with prompts for archetype selection, group ID, artifact ID, package name, description, and infrastructure defaults.
+
+**Flags:**
+
+| Flag | Short | Default | Description |
+|------|-------|---------|-------------|
+| `--group-id` | `-g` | `""` | Maven groupId (interactive if omitted) |
+| `--artifact-id` | `-a` | `""` | Maven artifactId (interactive if omitted) |
+| `--package` | `-p` | `""` | Base Java package (derived from groupId if omitted) |
+| `--description` | `-d` | `""` | Project description |
+| `--version` | | `0.0.1-SNAPSHOT` | Initial project version |
+| `--output` | `-o` | `""` | Output directory (defaults to artifactId) |
+| `--no-git` | | `false` | Skip git init |
 
 ### `flywork doctor`
 
@@ -123,6 +154,14 @@ flywork update -v                                     # verbose with layer info
 
 When `--skip-tests` is not provided (and not `--pull-only`), the CLI interactively asks whether to run tests (default: **yes**).
 
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--pull-only` | `false` | Only git pull, skip Maven install |
+| `--repo` | `""` | Update a single repository by name |
+| `--skip-tests` | `false` | Skip running tests during Maven install |
+
 The update command uses the same DAG resolver as `setup`, with two distinct phases:
 
 1. **Phase 1** — Git pull with progress bar
@@ -140,6 +179,16 @@ flywork build --dry-run        # show what would be built without building
 flywork build --skip-tests     # skip running tests during Maven install
 flywork build --jdk /path      # use an explicit JAVA_HOME
 ```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--all` | `false` | Rebuild everything (ignore change detection) |
+| `--repo` | `""` | Build a specific repo and its dependents |
+| `--dry-run` | `false` | Show what would be built without building |
+| `--skip-tests` | `false` | Skip running tests during Maven install |
+| `--jdk` | `""` | Explicit JAVA_HOME path |
 
 **Phases:**
 
@@ -161,6 +210,16 @@ flywork publish --dry-run      # show what would be published
 flywork publish --skip-tests   # skip tests during deploy (default: true)
 flywork publish --jdk /path    # use an explicit JAVA_HOME
 ```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--all` | `false` | Publish everything (ignore change detection) |
+| `--repo` | `""` | Publish a specific repo only |
+| `--dry-run` | `false` | Show what would be published without publishing |
+| `--skip-tests` | `true` | Skip tests during deploy |
+| `--jdk` | `""` | Explicit JAVA_HOME path |
 
 Requires `GITHUB_TOKEN` environment variable set with `write:packages` scope.
 
@@ -190,8 +249,8 @@ flywork dag export                        # export full DAG as JSON for CI/CD co
 |------------|-------------|
 | `show` | Full dependency graph with arrows showing dependencies |
 | `layers` | Repos grouped by build layer (0 = no dependencies) |
-| `affected` | Transitive closure of repos affected by a change in `--from` |
-| `export` | JSON export of the entire DAG (nodes, edges, layers) |
+| `affected` | Transitive closure of repos affected by a change in `--from` (required flag) |
+| `export` | JSON export of the entire DAG (nodes, edges, layers) for CI/CD |
 
 ### `flywork fwversion`
 
@@ -227,6 +286,32 @@ flywork fwversion families                # show version family release history
 | `--dry-run` | `false` | Show changes without modifying files |
 | `--install` | `false` | Run `mvn install` in all repos after bumping |
 
+### `flywork run`
+
+Runs a Firefly Framework application with interactive configuration assistance. Detects the Spring Boot module, scans configuration files for missing environment variables, and launches an interactive wizard before starting the app.
+
+```bash
+flywork run                            # interactive run with configuration wizard
+flywork run --profile dev              # activate the 'dev' Spring profile
+flywork run --skip-wizard              # skip the configuration wizard
+flywork run --profile local --skip-wizard   # non-interactive run with 'local' profile
+```
+
+**What it does:**
+
+1. **Project Analysis** — Detects archetype (core, domain, application, library), multi-module layout, and locates the web/boot module
+2. **Profile Selection** — If Spring profiles are detected (e.g. `dev`, `local`) and `--profile` is not provided, offers an interactive selection prompt
+3. **Configuration Scanning** — Parses `application.yaml` for `${PLACEHOLDER}` variables and groups them into: set from environment, have defaults, or missing (required)
+4. **Interactive Wizard** — Prompts for required variables, offers to override defaults, and uses smart defaults for common names (e.g. `DB_HOST` → `localhost`, `DB_PORT` → `5432`)
+5. **Launch** — Starts the application with `mvn spring-boot:run` passing the selected profile and environment variable overrides
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--profile` | `""` | Spring profile to activate (e.g. dev, local) |
+| `--skip-wizard` | `false` | Skip the interactive configuration wizard |
+
 ### `flywork upgrade`
 
 Self-updates the CLI binary from GitHub releases.
@@ -235,6 +320,12 @@ Self-updates the CLI binary from GitHub releases.
 flywork upgrade            # download and install latest version
 flywork upgrade --check    # just check if an update is available
 ```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--check` | `false` | Only check for updates, don't install |
 
 ### `flywork config`
 
@@ -255,6 +346,17 @@ Prints CLI version, git commit, build date, Go version, and OS/architecture.
 ```bash
 flywork version
 ```
+
+---
+
+## Global Flags
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--verbose` | `-v` | Enable verbose output (DAG layers, per-repo details, etc.) |
+| `--help` | `-h` | Show help for any command |
+
+The `--verbose` flag is available on all commands. It enables additional output such as DAG layer headers, per-repo status lines, and detailed version information.
 
 ---
 
@@ -289,8 +391,9 @@ Configuration is stored in `~/.flywork/config.yaml`.
 | `github_org` | `fireflyframework` | GitHub organization name |
 | `default_group_id` | `org.fireflyframework` | Default Maven groupId for new projects |
 | `java_version` | `25` | Target Java version for compilation |
-| `parent_version` | `1.0.0-SNAPSHOT` | Parent POM version for archetypes |
+| `parent_version` | `26.01.01` | Parent POM CalVer version for archetypes |
 | `cli_auto_update` | `false` | Auto-check for CLI updates on launch |
+| `branch` | `develop` | Git branch to clone during setup |
 
 ### Dynamic Java Version
 
@@ -428,6 +531,7 @@ fireflyframework-cli/
 │   ├── fwversion.go              # flywork fwversion (CalVer management)
 │   ├── upgrade.go                # flywork upgrade (self-update)
 │   ├── config.go                 # flywork config (get/set/reset)
+│   ├── run.go                    # flywork run (application runner)
 │   └── version.go                # flywork version
 ├── internal/
 │   ├── build/                    # Smart build engine
@@ -444,6 +548,7 @@ fireflyframework-cli/
 │   │   ├── publisher.go          # DAG-ordered Maven deploy
 │   │   ├── python.go             # Python package publishing
 │   │   └── settings.go           # Maven settings.xml management
+│   ├── runner/                   # Application runner with config wizard
 │   ├── scaffold/                 # Archetype engine
 │   │   ├── engine.go             # Template rendering and project generation
 │   │   ├── archetypes/*.yaml     # Embedded archetype definitions

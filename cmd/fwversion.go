@@ -34,7 +34,23 @@ import (
 var fwversionCmd = &cobra.Command{
 	Use:   "fwversion",
 	Short: "Manage framework-wide CalVer versions",
-	Long:  "Show, bump, check, and track CalVer versions across all Firefly Framework repositories.",
+	Long: `Show, bump, check, and track CalVer versions across all Firefly Framework
+repositories. The framework uses Calendar Versioning (CalVer) in the format
+YY.MM.PP (e.g. 26.01.01).
+
+Available Subcommands:
+  show       Show current framework version across all repos
+  bump       Bump framework version across all repos (updates pom.xml files)
+  check      Validate version consistency across all repos
+  families   Show version family release history
+
+Examples:
+  flywork fwversion show
+  flywork fwversion bump --auto
+  flywork fwversion bump --auto --push
+  flywork fwversion bump --dry-run
+  flywork fwversion check
+  flywork fwversion families`,
 }
 
 // ── fwversion show ──────────────────────────────────────────────────────────
@@ -42,7 +58,11 @@ var fwversionCmd = &cobra.Command{
 var fwversionShowCmd = &cobra.Command{
 	Use:   "show",
 	Short: "Show current framework version across all repos",
-	RunE:  runFwversionShow,
+	Long: `Displays the current POM version for each framework repository, highlights
+mismatches against the configured target version, and reports dirty working
+trees. Use -v for a detailed per-repository listing with version, git tag,
+and dirty status.`,
+	RunE: runFwversionShow,
 }
 
 func runFwversionShow(cmd *cobra.Command, args []string) error {
@@ -166,8 +186,33 @@ var (
 var fwversionBumpCmd = &cobra.Command{
 	Use:   "bump",
 	Short: "Bump framework version across all repos",
-	Long:  "Updates all pom.xml files, optionally commits, tags, and pushes.",
-	RunE:  runFwversionBump,
+	Long: `Updates all pom.xml files across every framework repository to a new CalVer
+version, and optionally commits, tags, and pushes the changes.
+
+By default the CLI auto-increments the patch number from the current version.
+Use --auto to explicitly request auto-computation. Use --year, --month, and
+--patch to set a specific version manually.
+
+The bump process:
+  1. Detects the current version from the parent POM
+  2. Computes or accepts the target version
+  3. Updates all pom.xml files across every cloned repository
+  4. Updates the GenAI module version files (if present)
+  5. Optionally commits changes (--commit, default: true)
+  6. Optionally tags each repo with v<version> (--tag, default: true)
+  7. Optionally pushes to remote (--push, default: false)
+  8. Optionally runs mvn install after bumping (--install)
+  9. Records a version family snapshot for history tracking
+  10. Updates ~/.flywork/config.yaml with the new parent_version
+
+Examples:
+  flywork fwversion bump                Auto-increment patch version
+  flywork fwversion bump --auto         Explicitly auto-compute next CalVer
+  flywork fwversion bump --auto --push  Bump, commit, tag, and push
+  flywork fwversion bump --dry-run      Preview changes without modifying files
+  flywork fwversion bump --install      Bump + run mvn install after
+  flywork fwversion bump --year 26 --month 2 --patch 1  Set explicit version`,
+	RunE: runFwversionBump,
 }
 
 func runFwversionBump(cmd *cobra.Command, args []string) error {
@@ -391,7 +436,19 @@ func runFwversionBump(cmd *cobra.Command, args []string) error {
 var fwversionCheckCmd = &cobra.Command{
 	Use:   "check",
 	Short: "Validate version consistency across all repos",
-	RunE:  runFwversionCheck,
+	Long: `Runs a comprehensive set of consistency checks across all framework
+repositories:
+
+  - POM version consistency: all repos should be at the same version
+  - Config matches repos: ~/.flywork/config.yaml parent_version matches actual POMs
+  - Git tags: each repo's latest tag should match its POM version (v<version>)
+  - Clean working trees: no uncommitted changes in any repository
+  - All repos cloned: verifies all expected repositories exist
+  - Parent POM in .m2: the parent POM artifact is installed at the target version
+  - BOM in .m2: the BOM artifact is installed at the target version
+
+Each check reports pass, warn, or fail with a detail message.`,
+	RunE: runFwversionCheck,
 }
 
 func runFwversionCheck(cmd *cobra.Command, args []string) error {
@@ -591,7 +648,12 @@ func runFwversionCheck(cmd *cobra.Command, args []string) error {
 var fwversionFamiliesCmd = &cobra.Command{
 	Use:   "families",
 	Short: "Show version family history",
-	RunE:  runFwversionFamilies,
+	Long: `Shows the history of version bumps recorded in ~/.flywork/version-families.json.
+Each entry includes the version string, release date, and the number of modules
+that were updated. The most recent version is marked with '*'.
+
+Use -v to also display the per-module git commit SHAs for each version family.`,
+	RunE: runFwversionFamilies,
 }
 
 func runFwversionFamilies(cmd *cobra.Command, args []string) error {
