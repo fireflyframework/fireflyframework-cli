@@ -151,6 +151,32 @@ func IsDirty(dir string) (bool, error) {
 	return strings.TrimSpace(string(out)) != "", nil
 }
 
+// HeadSHA returns the full 40-character SHA of HEAD in the given directory.
+func HeadSHA(dir string) (string, error) {
+	cmd := exec.Command("git", "rev-parse", "HEAD")
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+// DiffStatSince returns the list of files changed between sinceCommit and HEAD.
+func DiffStatSince(dir, sinceCommit string) ([]string, error) {
+	cmd := exec.Command("git", "diff", "--name-only", sinceCommit, "HEAD")
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+	raw := strings.TrimSpace(string(out))
+	if raw == "" {
+		return nil, nil
+	}
+	return strings.Split(raw, "\n"), nil
+}
+
 // RepoURL builds a GitHub clone URL for the fireflyframework org.
 func RepoURL(org, repo string) string {
 	return fmt.Sprintf("https://github.com/%s/%s.git", org, repo)

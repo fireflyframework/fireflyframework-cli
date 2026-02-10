@@ -128,6 +128,46 @@ func appendJavaHome(env []string, javaHome string) []string {
 	return append(filtered, "JAVA_HOME="+javaHome)
 }
 
+// Deploy runs mvn deploy with a GitHub Packages target repository.
+func Deploy(dir, javaHome string, skipTests bool, deployRepo string) error {
+	args := buildDeployArgs(skipTests, deployRepo)
+	cmd := exec.Command("mvn", args...)
+	cmd.Dir = dir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if javaHome != "" {
+		cmd.Env = appendJavaHome(os.Environ(), javaHome)
+	}
+	return cmd.Run()
+}
+
+// DeployQuietOutput runs mvn deploy silently and captures output.
+func DeployQuietOutput(dir, javaHome string, skipTests bool, deployRepo string) ([]byte, error) {
+	args := buildDeployArgs(skipTests, deployRepo)
+	cmd := exec.Command("mvn", args...)
+	cmd.Dir = dir
+	if javaHome != "" {
+		cmd.Env = appendJavaHome(os.Environ(), javaHome)
+	}
+	var buf bytes.Buffer
+	cmd.Stdout = &buf
+	cmd.Stderr = &buf
+	err := cmd.Run()
+	return buf.Bytes(), err
+}
+
+// buildDeployArgs returns the Maven arguments for deploy.
+func buildDeployArgs(skipTests bool, deployRepo string) []string {
+	args := []string{"-B", "clean", "deploy", "-P", "release"}
+	if skipTests {
+		args = append(args, "-DskipTests")
+	}
+	if deployRepo != "" {
+		args = append(args, "-DaltDeploymentRepository="+deployRepo)
+	}
+	return args
+}
+
 // ArtifactExistsInM2 checks if a given artifact exists in the local .m2 repository.
 func ArtifactExistsInM2(groupID, artifactID, version string) bool {
 	home, err := os.UserHomeDir()

@@ -15,7 +15,9 @@
 package dag
 
 import (
+	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -166,6 +168,100 @@ func (g *Graph) Layers() ([][]string, error) {
 // FlatOrder returns a flat list of nodes in valid dependency order (topological sort).
 func (g *Graph) FlatOrder() ([]string, error) {
 	return g.TopologicalSort()
+}
+
+// HasNode returns true if the graph contains a node with the given id.
+func (g *Graph) HasNode(id string) bool {
+	return g.nodes[id]
+}
+
+// Nodes returns all node IDs in insertion order.
+func (g *Graph) Nodes() []string {
+	out := make([]string, len(g.ordered))
+	copy(out, g.ordered)
+	return out
+}
+
+// TransitiveDependentsOf performs a BFS on reverse edges from the given node,
+// returning all repos that transitively depend on it. The starting node itself
+// is not included in the result.
+func (g *Graph) TransitiveDependentsOf(id string) []string {
+	if !g.nodes[id] {
+		return nil
+	}
+
+	visited := map[string]bool{id: true}
+	queue := []string{id}
+	var result []string
+
+	for len(queue) > 0 {
+		node := queue[0]
+		queue = queue[1:]
+
+		for dependent := range g.reverse[node] {
+			if !visited[dependent] {
+				visited[dependent] = true
+				result = append(result, dependent)
+				queue = append(queue, dependent)
+			}
+		}
+	}
+
+	sort.Strings(result)
+	return result
+}
+
+// Subgraph returns a new Graph containing only the specified nodes and the
+// edges between them. Nodes not present in the original graph are ignored.
+func (g *Graph) Subgraph(nodes map[string]bool) *Graph {
+	sub := New()
+
+	// Add nodes in original insertion order for determinism
+	for _, id := range g.ordered {
+		if nodes[id] {
+			sub.AddNode(id)
+		}
+	}
+
+	// Add only edges where both endpoints are in the subgraph
+	for from := range nodes {
+		if !g.nodes[from] {
+			continue
+		}
+		for to := range g.edges[from] {
+			if nodes[to] {
+				sub.AddEdge(from, to)
+			}
+		}
+	}
+
+	return sub
+}
+
+// dagJSON is the serialization format for ExportJSON.
+type dagJSON struct {
+	Layers [][]string            `json:"layers"`
+	Edges  map[string][]string   `json:"edges"`
+}
+
+// ExportJSON exports the graph as JSON with layers and edges.
+// The output is suitable for consumption by GitHub Actions workflows.
+func (g *Graph) ExportJSON() ([]byte, error) {
+	layers, err := g.Layers()
+	if err != nil {
+		return nil, err
+	}
+
+	edges := make(map[string][]string, len(g.nodes))
+	for _, id := range g.ordered {
+		deps := g.DependenciesOf(id)
+		sort.Strings(deps)
+		if len(deps) > 0 {
+			edges[id] = deps
+		}
+	}
+
+	return json.MarshalIndent(dagJSON{Layers: layers, Edges: edges}, "", "  ")
 }
 
 // detectCycle finds and returns one cycle in the graph using DFS.
