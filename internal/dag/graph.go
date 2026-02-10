@@ -366,41 +366,30 @@ func FrameworkGraph() *Graph {
 	// ── Layer 0: root ──────────────────────────────────────────────────
 	g.AddNode(parent)
 
-	// ── Layer 1: bom → parent ─────────────────────────────────────────
+	// ── Layer 1: bom + leaf modules (only depend on parent POM) ───────
 	g.AddEdge(bom, parent)
-
-	// ── Layer 2: utils → bom ──────────────────────────────────────────
-	g.AddEdge(utils, bom)
-
-	// ── Layer 3: leaf modules that depend only on utils ────────────────
 	for _, mod := range []string{
-		validators, plugins, cache, r2dbc, eda, cqrs,
-		client, ecm, idp, configServer,
+		utils, cache, eda, ecm, idp, configServer,
+		client, validators, plugins, transactionalEng,
 	} {
-		g.AddEdge(mod, utils)
+		g.AddEdge(mod, parent)
 	}
 
-	// ── Layer 4: modules with inter-module dependencies ────────────────
+	// ── Layer 2: modules with single-level framework dependencies ─────
 
-	// web depends on utils + cache
-	g.AddEdge(web, utils)
+	// r2dbc depends on utils
+	g.AddEdge(r2dbc, utils)
+
+	// cqrs depends on validators, cache
+	g.AddEdge(cqrs, validators)
+	g.AddEdge(cqrs, cache)
+
+	// web depends on cache
 	g.AddEdge(web, cache)
-
-	// eventsourcing depends on cqrs, eda, r2dbc, cache
-	g.AddEdge(eventsourcing, cqrs)
-	g.AddEdge(eventsourcing, eda)
-	g.AddEdge(eventsourcing, r2dbc)
-	g.AddEdge(eventsourcing, cache)
 
 	// workflow depends on cache, eda
 	g.AddEdge(workflow, cache)
 	g.AddEdge(workflow, eda)
-
-	// application depends on client, cache, cqrs, eda
-	g.AddEdge(application, client)
-	g.AddEdge(application, cache)
-	g.AddEdge(application, cqrs)
-	g.AddEdge(application, eda)
 
 	// ECM implementation modules
 	g.AddEdge(ecmEsigAdobe, ecm)
@@ -411,50 +400,61 @@ func FrameworkGraph() *Graph {
 
 	// IDP implementation modules
 	g.AddEdge(idpCognito, idp)
-	g.AddEdge(idpInternalDB, idp)
 	g.AddEdge(idpKeycloak, idp)
 
-	// ── Layer 5: transactional engine → eventsourcing ──────────────────
-	g.AddEdge(transactionalEng, eventsourcing)
+	// ── Layer 3: modules with deeper dependencies ─────────────────────
 
-	// ── Layer 6: modules that depend on transactional-engine ───────────
+	// eventsourcing depends on r2dbc, eda, cache
+	g.AddEdge(eventsourcing, r2dbc)
+	g.AddEdge(eventsourcing, eda)
+	g.AddEdge(eventsourcing, cache)
 
-	// core depends on cqrs, eda, transactional-engine
+	// application depends on client, cache, cqrs, eda
+	g.AddEdge(application, client)
+	g.AddEdge(application, cache)
+	g.AddEdge(application, cqrs)
+	g.AddEdge(application, eda)
+
+	// idp-internal-db depends on idp, r2dbc
+	g.AddEdge(idpInternalDB, idp)
+	g.AddEdge(idpInternalDB, r2dbc)
+
+	// core depends on eda, cqrs, transactional-engine
 	g.AddEdge(core, cqrs)
 	g.AddEdge(core, eda)
 	g.AddEdge(core, transactionalEng)
 
-	// domain depends on client, cqrs, eda, transactional-engine, validators
-	g.AddEdge(domain, client)
-	g.AddEdge(domain, cqrs)
-	g.AddEdge(domain, eda)
-	g.AddEdge(domain, transactionalEng)
+	// domain depends on validators, transactional-engine, cqrs, client, eda
 	g.AddEdge(domain, validators)
+	g.AddEdge(domain, transactionalEng)
+	g.AddEdge(domain, cqrs)
+	g.AddEdge(domain, client)
+	g.AddEdge(domain, eda)
 
-	// data depends on cache, client, cqrs, eda, transactional-engine
-	g.AddEdge(data, cache)
+	// data depends on client, cqrs, eda, cache, transactional-engine
 	g.AddEdge(data, client)
 	g.AddEdge(data, cqrs)
 	g.AddEdge(data, eda)
+	g.AddEdge(data, cache)
 	g.AddEdge(data, transactionalEng)
 
-	// ── Layer 7: modules that depend on core/domain/data ───────────────
+	// ── Layer 4: modules that depend on core/domain/data ──────────────
 
 	// notifications depends on core
 	g.AddEdge(notifications, core)
 
-	// rule-engine depends on cache, core, r2dbc, utils, validators, web
-	g.AddEdge(ruleEngine, utils)
-	g.AddEdge(ruleEngine, cache)
+	// rule-engine depends on core, cache, utils, validators, web, r2dbc
 	g.AddEdge(ruleEngine, core)
-	g.AddEdge(ruleEngine, r2dbc)
+	g.AddEdge(ruleEngine, cache)
+	g.AddEdge(ruleEngine, utils)
 	g.AddEdge(ruleEngine, validators)
 	g.AddEdge(ruleEngine, web)
+	g.AddEdge(ruleEngine, r2dbc)
 
-	// webhooks depends on cache, core, eda, web
-	g.AddEdge(webhooks, cache)
+	// webhooks depends on core, eda, cache, web
 	g.AddEdge(webhooks, core)
 	g.AddEdge(webhooks, eda)
+	g.AddEdge(webhooks, cache)
 	g.AddEdge(webhooks, web)
 
 	// callbacks depends on core, eda, r2dbc, web
@@ -473,7 +473,7 @@ func FrameworkGraph() *Graph {
 	g.AddEdge(backoffice, eda)
 	g.AddEdge(backoffice, application)
 
-	// ── Layer 8: notification implementations → notifications ──────────
+	// ── Layer 5: notification implementations → notifications ─────────
 	g.AddEdge(notifFirebase, notifications)
 	g.AddEdge(notifResend, notifications)
 	g.AddEdge(notifSendgrid, notifications)
