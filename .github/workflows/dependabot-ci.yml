@@ -2,10 +2,49 @@ name: Dependabot CI
 on:
   pull_request_target:
     branches: [develop, main]
+
+permissions:
+  contents: read
+  statuses: write
+
 jobs:
   build-and-test:
+    runs-on: ubuntu-latest
     if: github.actor == 'dependabot[bot]'
-    uses: fireflyframework/.github/.github/workflows/go-ci.yml@main
-    with:
-      go-version: '1.25'
-      checkout-ref: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: Checkout PR code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Go 1.25
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test -v -race -coverprofile=coverage.out ./...
+
+      - name: Build
+        run: go build -o /dev/null .
+
+      - name: Report build status
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            STATE="success"
+            DESC="Dependabot build passed"
+          else
+            STATE="failure"
+            DESC="Dependabot build failed"
+          fi
+          gh api "repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}" \
+            -f state="$STATE" \
+            -f context="build-and-test / build-and-test" \
+            -f description="$DESC" \
+            -f target_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
