@@ -64,6 +64,10 @@ func shouldSkipBanner(cmd *cobra.Command) bool {
 	if cmd.Flags().Changed("help") {
 		return true
 	}
+	// Skip if --json flag was set (prevents banner from corrupting JSON output)
+	if f := cmd.Flags().Lookup("json"); f != nil && f.Changed {
+		return true
+	}
 	// Build command path like "config get" (stop at root)
 	parts := []string{}
 	for c := cmd; c != nil && c.Parent() != nil; c = c.Parent() {
