@@ -44,8 +44,48 @@ var (
 var publishCmd = &cobra.Command{
 	Use:   "publish",
 	Short: "Publish artifacts to GitHub Packages",
-	Long:  "Deploys Maven artifacts to GitHub Packages and Python packages as GitHub Release assets, using DAG-aware ordering with change detection",
-	RunE:  runPublish,
+	Long: `Deploys Maven artifacts to GitHub Packages and Python packages as GitHub
+Release assets, using DAG-aware ordering with change detection.
+
+Requires the GITHUB_TOKEN environment variable to be set with 'write:packages'
+scope. The token is used for Maven deploy authentication and Python package
+release uploads.
+
+The publish process runs through the following phases:
+
+  Phase 0 — Preflight Checks
+    Verifies GITHUB_TOKEN is set, and Git, Maven, and Java are available.
+
+  Phase 1 — Maven Settings
+    Ensures ~/.m2/settings.xml contains the GitHub Packages server
+    configuration for authentication.
+
+  Phase 2 — Publish Plan
+    Uses the same SHA-based change detection as 'flywork build' to determine
+    which repos need publishing. Displays repos grouped by DAG layer.
+
+  Phase 3 — Maven Deploy
+    Runs 'mvn deploy' on each affected repository in dependency order with
+    progress bars and per-repo spinners.
+
+  Phase 4 — Python Publish (conditional)
+    If fireflyframework-genai is in scope, publishes the Python package as
+    GitHub Release assets.
+
+  Phase 5 — Summary
+    Reports published/skipped/failed counts and total time.
+
+Use --all to publish everything regardless of change detection. Use --repo to
+publish a specific repository only. Use --dry-run to preview without publishing.
+
+Examples:
+  flywork publish                     Publish changed repos
+  flywork publish --all               Publish everything
+  flywork publish --repo <name>       Publish a specific repo
+  flywork publish --dry-run           Preview what would be published
+  flywork publish --skip-tests=false  Run tests during deploy
+  flywork publish --jdk /path/to/jdk  Use a specific JAVA_HOME`,
+	RunE: runPublish,
 }
 
 func init() {

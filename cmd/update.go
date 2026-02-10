@@ -38,8 +38,31 @@ var (
 var updateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update framework repositories and reinstall to local Maven cache",
-	Long:  "Pulls the latest changes for all cloned fireflyframework repos and reinstalls them to ~/.m2",
-	RunE:  runUpdate,
+	Long: `Pulls the latest changes for all cloned fireflyframework repositories and
+reinstalls them to your local Maven repository (~/.m2) in DAG-resolved
+dependency order.
+
+The update process has two phases:
+
+  Phase 1 — Pulling Latest Changes
+    Runs 'git pull' on each cloned repository with a live progress bar.
+    Repositories that are not cloned are skipped with a warning.
+
+  Phase 2 — Installing Artifacts (skipped with --pull-only)
+    Runs 'mvn clean install' on each repository in dependency order.
+    Per-repo spinners show elapsed time. When --skip-tests is not provided,
+    the CLI interactively asks whether to run tests (default: yes).
+
+Use --repo to update a single repository by name (e.g. fireflyframework-utils).
+Use --pull-only to only fetch the latest code without running Maven install.
+
+Examples:
+  flywork update                                  Pull + install all repos
+  flywork update --skip-tests                     Skip tests during install
+  flywork update --pull-only                      Only git pull, skip Maven
+  flywork update --repo fireflyframework-utils    Update a single repository
+  flywork update -v                               Verbose with layer details`,
+	RunE: runUpdate,
 }
 
 func init() {

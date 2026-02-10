@@ -41,8 +41,44 @@ var (
 var buildCmd = &cobra.Command{
 	Use:   "build",
 	Short: "Smart DAG-aware build with change detection",
-	Long:  "Detects which repos have changed since the last build, computes affected downstream repos, and builds them in dependency order",
-	RunE:  runBuild,
+	Long: `Detects which repositories have changed since the last successful build,
+computes the transitive closure of affected downstream repositories via the
+dependency graph, and builds them in layer-by-layer dependency order.
+
+The build process runs through the following phases:
+
+  Phase 0 — Preflight Checks
+    Verifies that Git, Maven, and Java are installed and available.
+
+  Phase 1 — Change Detection
+    Compares HEAD commit SHAs against the last-build manifest
+    (~/.flywork/build-manifest.json). Repos with different SHAs are
+    considered changed.
+
+  Phase 2 — Build Plan
+    Displays affected repos grouped by DAG layer. Directly changed repos
+    are marked with '*'. Shows total count and layer breakdown.
+
+  Phase 3 — DAG Build
+    Runs 'mvn clean install' layer-by-layer with progress bars and per-repo
+    spinners showing elapsed time.
+
+  Phase 4 — Summary
+    Reports built/skipped/failed counts, total time, and log file locations
+    for any failures.
+
+Use --all to ignore change detection and rebuild everything. Use --repo to
+target a specific repository and its downstream dependents. Use --dry-run to
+preview the build plan without executing it.
+
+Examples:
+  flywork build                     Build changed repos + affected dependents
+  flywork build --all               Rebuild everything
+  flywork build --repo <name>       Build a specific repo and its dependents
+  flywork build --dry-run           Preview build plan without building
+  flywork build --skip-tests        Skip tests during Maven install
+  flywork build --jdk /path/to/jdk  Use a specific JAVA_HOME`,
+	RunE: runBuild,
 }
 
 func init() {

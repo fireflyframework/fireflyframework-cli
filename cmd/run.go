@@ -33,8 +33,39 @@ var (
 var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Run a Firefly Framework application with configuration assistance",
-	Long:  "Detects the Spring Boot module, scans application config for missing variables, and launches an interactive wizard before running the application",
-	RunE:  runRun,
+	Long: `Detects the Spring Boot module in your project, scans application configuration
+files for missing environment variables, and launches an interactive wizard
+before running the application with 'mvn spring-boot:run'.
+
+The run process:
+
+  1. Project Analysis
+     Detects the project archetype (core, domain, application, library),
+     identifies multi-module layout, and locates the web/boot module.
+
+  2. Profile Selection
+     If Spring profiles are detected (e.g. dev, local) and --profile is not
+     provided, offers an interactive selection prompt.
+
+  3. Configuration Scanning
+     Parses application.yaml/properties for ${PLACEHOLDER} variables. Groups
+     them into: set from environment, have defaults, or missing (required).
+
+  4. Interactive Wizard (skipped with --skip-wizard)
+     - Prompts for any required variables that have no default and no env value
+     - Offers to override default values if desired
+     - Uses smart defaults for common variables (DB_HOST, DB_PORT, etc.)
+
+  5. Launch
+     Starts the application with 'mvn spring-boot:run' passing the selected
+     profile and environment variable overrides.
+
+Examples:
+  flywork run                       Interactive run with wizard
+  flywork run --profile dev         Activate the 'dev' Spring profile
+  flywork run --skip-wizard         Skip the configuration wizard
+  flywork run --profile local --skip-wizard  Non-interactive run`,
+	RunE: runRun,
 }
 
 func init() {

@@ -27,19 +27,43 @@ import (
 var dagCmd = &cobra.Command{
 	Use:   "dag",
 	Short: "Inspect the framework dependency graph",
-	Long:  "Commands for viewing and querying the fireflyframework dependency DAG",
+	Long: `Commands for viewing and querying the fireflyframework dependency DAG
+(Directed Acyclic Graph). The DAG encodes the real Maven dependency
+relationships between all framework repositories and is used by setup,
+build, and publish to determine correct processing order.
+
+Available Subcommands:
+  show       Display the full dependency graph as an ASCII tree
+  layers     Show repositories grouped by build layer (0 = no dependencies)
+  affected   Compute transitive closure of repos affected by a change
+  export     Export the entire DAG as JSON for CI/CD consumption
+
+Examples:
+  flywork dag show
+  flywork dag layers
+  flywork dag affected --from fireflyframework-utils
+  flywork dag affected --from fireflyframework-utils --json
+  flywork dag export`,
 }
 
 var dagShowCmd = &cobra.Command{
 	Use:   "show",
 	Short: "Display the full dependency graph as an ASCII tree",
-	RunE:  runDagShow,
+	Long: `Displays the full framework dependency graph as a styled ASCII tree. Each
+repository is shown with arrows pointing to its direct dependencies.
+Repositories are grouped by layer, separated by dotted lines.`,
+	RunE: runDagShow,
 }
 
 var dagLayersCmd = &cobra.Command{
 	Use:   "layers",
 	Short: "Show repositories grouped by build layer",
-	RunE:  runDagLayers,
+	Long: `Shows all repositories grouped by their build layer. Layer 0 contains
+repositories with no dependencies (e.g. parent). Each subsequent layer
+depends only on repositories in earlier layers. Repositories in the same
+layer are independent of each other and can theoretically be built in
+parallel.`,
+	RunE: runDagLayers,
 }
 
 var (
@@ -50,7 +74,18 @@ var (
 var dagAffectedCmd = &cobra.Command{
 	Use:   "affected",
 	Short: "Compute transitive closure of repos affected by a change",
-	RunE:  runDagAffected,
+	Long: `Computes all downstream repositories that would be affected by a change in
+the specified source repository. This is the transitive closure of the
+'depends-on' relationship — i.e., all repos that directly or indirectly
+depend on the source.
+
+The --from flag is required and must be a valid repository name from the DAG.
+Use --json for machine-readable output suitable for CI/CD pipelines.
+
+Examples:
+  flywork dag affected --from fireflyframework-utils
+  flywork dag affected --from fireflyframework-web --json`,
+	RunE: runDagAffected,
 }
 
 var dagExportJSON bool
@@ -58,7 +93,11 @@ var dagExportJSON bool
 var dagExportCmd = &cobra.Command{
 	Use:   "export",
 	Short: "Export the DAG as JSON for CI/CD consumption",
-	RunE:  runDagExport,
+	Long: `Exports the entire dependency graph as a JSON document containing nodes,
+edges, and layer assignments. This is intended for CI/CD pipeline
+integration, allowing external tools to understand the build order and
+dependency relationships.`,
+	RunE: runDagExport,
 }
 
 func init() {

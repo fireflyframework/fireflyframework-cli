@@ -27,8 +27,21 @@ var upgradeCheckOnly bool
 var upgradeCmd = &cobra.Command{
 	Use:   "upgrade",
 	Short: "Upgrade the Flywork CLI to the latest version",
-	Long:  "Checks GitHub releases for a newer version and self-updates the binary in place",
-	RunE:  runUpgrade,
+	Long: `Checks GitHub releases for a newer version of the Flywork CLI and
+self-updates the binary in place.
+
+The process:
+  1. Fetches the latest release from GitHub
+  2. Compares the remote version against the currently installed version
+  3. If a newer version is available, downloads the platform-specific binary
+  4. Replaces the current binary with the downloaded one
+
+Use --check to only check for updates without installing.
+
+Examples:
+  flywork upgrade           Download and install the latest version
+  flywork upgrade --check   Only check if an update is available`,
+	RunE: runUpgrade,
 }
 
 func init() {

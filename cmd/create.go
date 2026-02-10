@@ -43,9 +43,35 @@ var (
 var createCmd = &cobra.Command{
 	Use:   "create [archetype]",
 	Short: "Scaffold a new Firefly Framework project",
-	Long:  "Creates a new project from an archetype: core, domain, application, or library",
-	Args:  cobra.MaximumNArgs(1),
-	RunE:  runCreate,
+	Long: `Creates a new project from one of four YAML-driven archetypes. If no archetype
+is provided as an argument, the CLI enters interactive mode with prompts for
+archetype selection, group ID, artifact ID, package name, and description.
+
+Available archetypes:
+  core          Multi-module microservice with R2DBC, Flyway, MapStruct, OpenAPI SDK,
+                and reactive services (5 modules: interfaces, models, core, sdk, web)
+  domain        Multi-module CQRS/Saga microservice with transactional engine
+                (5 modules: interfaces, infra, core, sdk, web)
+  application   Single-module application with plugin architecture and Spring Security
+  library       Single-module library with Spring Boot auto-configuration
+
+For core, domain, and application archetypes, an infrastructure wizard prompts
+for default values (server port, database host/port/name/user/password) that
+are embedded into the generated application.yaml file. These values can be
+overridden at runtime via environment variables.
+
+Custom archetypes can be placed in ~/.flywork/archetypes/<name>.yaml to override
+built-in archetypes or define new ones.
+
+Examples:
+  flywork create                                      Interactive mode
+  flywork create core                                 Core archetype with prompts
+  flywork create domain -g com.example -a my-service  Provide group and artifact IDs
+  flywork create application -o ./output-dir          Custom output directory
+  flywork create library --no-git                     Skip git init
+  flywork create core --version 1.0.0                 Custom initial version`,
+	Args:      cobra.MaximumNArgs(1),
+	RunE:      runCreate,
 	ValidArgs: scaffold.ListArchetypes(),
 }
 

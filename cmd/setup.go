@@ -40,8 +40,46 @@ var (
 var setupCmd = &cobra.Command{
 	Use:   "setup",
 	Short: "Bootstrap the Firefly Framework into your local environment",
-	Long:  "Clones all fireflyframework repos and installs them to your local Maven repository (~/.m2)",
-	RunE:  runSetup,
+	Long: `Clones all fireflyframework repositories and installs them to your local Maven
+repository (~/.m2) in DAG-resolved dependency order.
+
+The setup process runs through the following phases:
+
+  Phase 0 — Preflight Checks
+    Verifies that Git, Maven, and Java are installed and available.
+
+  Phase 1 — JDK Selection
+    Auto-detects installed JDK versions matching the configured java_version
+    (default: 25). Use --jdk to skip auto-detection and provide an explicit path.
+
+  Phase 2 — Cloning Repositories
+    Clones all framework repos layer-by-layer based on the dependency graph.
+    A live progress bar tracks overall progress.
+
+  Phase 3 — Installing Artifacts
+    Runs 'mvn clean install' on each repository in dependency order. Per-repo
+    spinners show elapsed time. When --skip-tests is not provided, the CLI
+    interactively asks whether to run tests (default: yes).
+
+  Post-Install — Retry Loop
+    If any repositories fail to install, the CLI offers to retry them
+    immediately.
+
+Resume and retry behavior:
+  If a previous setup was interrupted, the CLI detects the manifest file
+  (~/.flywork/setup-manifest.json) and offers to resume, retry failed repos,
+  or start fresh. Use --retry to skip the prompt and directly retry failures.
+  Use --fresh to ignore any previous manifest and start over.
+
+Examples:
+  flywork setup                    Full interactive setup
+  flywork setup --skip-tests       Skip tests during Maven install
+  flywork setup --retry            Retry only previously failed repositories
+  flywork setup --fresh            Ignore previous manifest, start from scratch
+  flywork setup --fetch-updates    Also fetch updates for already-cloned repos
+  flywork setup --jdk /path/to/jdk Use a specific JDK instead of auto-detection
+  flywork setup -v                 Verbose output with DAG layer details`,
+	RunE: runSetup,
 }
 
 func init() {

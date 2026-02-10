@@ -27,8 +27,31 @@ import (
 var doctorCmd = &cobra.Command{
 	Use:   "doctor",
 	Short: "Diagnose your Firefly Framework environment and project",
-	Long:  "Runs global environment checks and, when inside a project directory, project-specific diagnostics.",
-	RunE:  runDoctor,
+	Long: `Runs comprehensive diagnostics on your environment and, when executed inside
+a Firefly project directory, also runs project-specific checks.
+
+Global environment checks:
+  - Java version detection (matches configured java_version)
+  - JAVA_HOME resolution
+  - Maven version and Java compatibility
+  - Git installation
+  - Framework repositories cloned status
+  - Parent POM presence in ~/.m2
+  - BOM presence in ~/.m2
+  - CLI version check (latest available vs installed)
+
+Project-specific checks (when inside a Firefly project):
+  - Project structure validation (pom.xml, src layout)
+  - Archetype detection
+  - Module structure verification
+
+Each check reports pass, warn, or fail with a detail message. The final
+summary shows total counts by status.
+
+Examples:
+  flywork doctor          Run all diagnostics
+  flywork doctor -v       Verbose output with additional details`,
+	RunE: runDoctor,
 }
 
 func init() {
