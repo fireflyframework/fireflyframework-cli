@@ -1,4 +1,6 @@
 # Firefly Framework CLI
+    
+[![CI](https://github.com/fireflyframework/fireflyframework-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/fireflyframework/fireflyframework-cli/actions/workflows/ci.yml)
 
 [![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go&logoColor=white)](https://go.dev)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
