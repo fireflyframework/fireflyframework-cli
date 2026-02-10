@@ -111,7 +111,7 @@ func InstallQuietOutput(dir string, skipTests bool) ([]byte, error) {
 
 // buildInstallArgs returns the Maven arguments for clean install.
 func buildInstallArgs(skipTests bool) []string {
-	args := []string{"clean", "install", "-q"}
+	args := []string{"clean", "install", "-q", "-U"}
 	if skipTests {
 		args = append(args, "-DskipTests")
 	}
