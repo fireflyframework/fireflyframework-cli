@@ -2,6 +2,12 @@ name: Release
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      triggered-by:
+        description: 'Orchestrator run ID'
+        required: false
+        type: string
 jobs:
   release:
     uses: fireflyframework/.github/.github/workflows/go-release.yml@main
@@ -10,3 +16,4 @@ jobs:
       binary-name: flywork
     permissions:
       contents: write
+    secrets: inherit
