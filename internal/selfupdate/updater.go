@@ -59,7 +59,7 @@ type UpdateResult struct {
 }
 
 // CheckForUpdate queries GitHub for the latest release and compares versions.
-// Versions follow CalVer MM.YY.Patch (e.g. 2.26.1 = Feb 2026 patch 1).
+// Versions follow CalVer YY.MM.Patch (e.g. 26.01.01 = 2026 Jan patch 1).
 func CheckForUpdate(currentVersion string) (*UpdateResult, error) {
 	release, err := fetchLatestRelease()
 	if err != nil {
@@ -101,33 +101,33 @@ func CheckForUpdate(currentVersion string) (*UpdateResult, error) {
 	return result, nil
 }
 
-// calVer holds the parsed components of a CalVer version (MM.YY.Patch).
+// calVer holds the parsed components of a CalVer version (YY.MM.Patch).
 type calVer struct {
-	Month int
 	Year  int
+	Month int
 	Patch int
 }
 
-// parseCalVer parses a "MM.YY.Patch" string into its components.
+// parseCalVer parses a "YY.MM.Patch" string into its components.
 func parseCalVer(v string) (calVer, error) {
 	v = strings.TrimPrefix(v, "v")
 	parts := strings.SplitN(v, ".", 3)
 	if len(parts) != 3 {
-		return calVer{}, fmt.Errorf("invalid calver: %q (expected MM.YY.Patch)", v)
+		return calVer{}, fmt.Errorf("invalid calver: %q (expected YY.MM.Patch)", v)
 	}
-	mm, err := strconv.Atoi(parts[0])
-	if err != nil {
-		return calVer{}, fmt.Errorf("invalid month in calver %q: %w", v, err)
-	}
-	yy, err := strconv.Atoi(parts[1])
+	yy, err := strconv.Atoi(parts[0])
 	if err != nil {
 		return calVer{}, fmt.Errorf("invalid year in calver %q: %w", v, err)
+	}
+	mm, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return calVer{}, fmt.Errorf("invalid month in calver %q: %w", v, err)
 	}
 	p, err := strconv.Atoi(parts[2])
 	if err != nil {
 		return calVer{}, fmt.Errorf("invalid patch in calver %q: %w", v, err)
 	}
-	return calVer{Month: mm, Year: yy, Patch: p}, nil
+	return calVer{Year: yy, Month: mm, Patch: p}, nil
 }
 
 // compareCalVer returns +1 if a > b, -1 if a < b, 0 if equal.

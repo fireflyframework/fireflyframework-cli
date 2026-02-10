@@ -1,7 +1,7 @@
 # Firefly Framework CLI Installer for Windows
 # Usage:
 #   irm https://raw.githubusercontent.com/fireflyframework/fireflyframework-cli/main/install.ps1 | iex
-#   $env:FLYWORK_VERSION = "v2.26.1"; .\install.ps1
+#   $env:FLYWORK_VERSION = "v26.01.01"; .\install.ps1
 
 $ErrorActionPreference = "Stop"
 
