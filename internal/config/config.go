@@ -37,6 +37,7 @@ var ValidKeys = []string{
 	"java_version",
 	"parent_version",
 	"cli_auto_update",
+	"branch",
 }
 
 type Config struct {
@@ -46,6 +47,7 @@ type Config struct {
 	JavaVersion   string `yaml:"java_version"`
 	ParentVersion string `yaml:"parent_version"`
 	CLIAutoUpdate bool   `yaml:"cli_auto_update"`
+	Branch        string `yaml:"branch"`
 }
 
 // GetField returns the value of a config key.
@@ -66,6 +68,8 @@ func (c *Config) GetField(key string) (string, bool) {
 			return "true", true
 		}
 		return "false", true
+	case "branch":
+		return c.Branch, true
 	default:
 		return "", false
 	}
@@ -86,6 +90,8 @@ func (c *Config) SetField(key, value string) bool {
 		c.ParentVersion = value
 	case "cli_auto_update":
 		c.CLIAutoUpdate = value == "true" || value == "1" || value == "yes"
+	case "branch":
+		c.Branch = value
 	default:
 		return false
 	}
@@ -101,6 +107,7 @@ func (c *Config) Fields() []KeyValue {
 		{"java_version", c.JavaVersion},
 		{"parent_version", c.ParentVersion},
 		{"cli_auto_update", fmt.Sprintf("%v", c.CLIAutoUpdate)},
+		{"branch", c.Branch},
 	}
 }
 
@@ -115,8 +122,9 @@ func DefaultConfig() *Config {
 		ReposPath:     filepath.Join(HomeDir(), FireflyDir, ReposDir),
 		GithubOrg:     "fireflyframework",
 		DefaultGroup:  "org.fireflyframework",
-	JavaVersion:   "25",
-		ParentVersion: "1.0.0-SNAPSHOT",
+		JavaVersion:   "25",
+		ParentVersion: "26.01.01",
+		Branch:        "develop",
 	}
 }
 

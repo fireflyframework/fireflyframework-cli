@@ -232,7 +232,7 @@ func runSetup(cmd *cobra.Command, args []string) error {
 	prevCloneLayer := -1
 
 	_, _, dagErr = setup.CloneAllDAG(
-		cfg.GithubOrg, cfg.ReposPath, manifest,
+		cfg.GithubOrg, cfg.ReposPath, cfg.Branch, manifest,
 		func(layer int, repo string, idx, total int, r setup.CloneResult) {
 			if verbose && layer != prevCloneLayer {
 				if prevCloneLayer >= 0 {

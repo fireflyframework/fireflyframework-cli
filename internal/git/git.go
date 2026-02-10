@@ -37,16 +37,28 @@ func Version() (string, error) {
 }
 
 // Clone clones a repository into the target directory.
-func Clone(repoURL, targetDir string) error {
-	cmd := exec.Command("git", "clone", "--depth", "1", repoURL, targetDir)
+// If branch is non-empty, that branch is checked out.
+func Clone(repoURL, targetDir, branch string) error {
+	args := []string{"clone", "--depth", "1"}
+	if branch != "" {
+		args = append(args, "--branch", branch)
+	}
+	args = append(args, repoURL, targetDir)
+	cmd := exec.Command("git", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
 }
 
 // CloneQuiet clones a repository without terminal output.
-func CloneQuiet(repoURL, targetDir string) error {
-	cmd := exec.Command("git", "clone", "--quiet", repoURL, targetDir)
+// If branch is non-empty, that branch is checked out.
+func CloneQuiet(repoURL, targetDir, branch string) error {
+	args := []string{"clone", "--quiet"}
+	if branch != "" {
+		args = append(args, "--branch", branch)
+	}
+	args = append(args, repoURL, targetDir)
+	cmd := exec.Command("git", args...)
 	return cmd.Run()
 }
 
@@ -94,6 +106,49 @@ func HeadCommit(dir string) (string, error) {
 		return "", err
 	}
 	return strings.TrimSpace(string(out)), nil
+}
+
+// Tag creates a lightweight tag in the given directory.
+func Tag(dir, tag string) error {
+	cmd := exec.Command("git", "tag", tag)
+	cmd.Dir = dir
+	return cmd.Run()
+}
+
+// Push pushes commits to the remote.
+func Push(dir string) error {
+	cmd := exec.Command("git", "push", "--quiet")
+	cmd.Dir = dir
+	return cmd.Run()
+}
+
+// PushTags pushes all tags to the remote.
+func PushTags(dir string) error {
+	cmd := exec.Command("git", "push", "--tags", "--quiet")
+	cmd.Dir = dir
+	return cmd.Run()
+}
+
+// LatestTag returns the most recent tag reachable from HEAD.
+func LatestTag(dir string) (string, error) {
+	cmd := exec.Command("git", "describe", "--tags", "--abbrev=0")
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+// IsDirty returns true if the working tree has uncommitted changes.
+func IsDirty(dir string) (bool, error) {
+	cmd := exec.Command("git", "status", "--porcelain")
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		return false, err
+	}
+	return strings.TrimSpace(string(out)) != "", nil
 }
 
 // RepoURL builds a GitHub clone URL for the fireflyframework org.

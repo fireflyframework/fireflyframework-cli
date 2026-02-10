@@ -84,7 +84,7 @@ type FetchResult struct {
 type FetchCallback func(repo string, index int, total int, result FetchResult)
 
 // CloneAll clones all framework repos into reposDir (flat order, no callback).
-func CloneAll(org, reposDir string) []CloneResult {
+func CloneAll(org, reposDir, branch string) []CloneResult {
 	results := make([]CloneResult, 0, len(FrameworkRepos))
 
 	for _, repo := range FrameworkRepos {
@@ -95,7 +95,7 @@ func CloneAll(org, reposDir string) []CloneResult {
 		}
 
 		url := git.RepoURL(org, repo)
-		err := git.CloneQuiet(url, target)
+		err := git.CloneQuiet(url, target, branch)
 		results = append(results, CloneResult{Repo: repo, Error: err})
 	}
 
@@ -104,7 +104,7 @@ func CloneAll(org, reposDir string) []CloneResult {
 
 // CloneAllDAG clones repos in DAG layer order, tracking state in the manifest.
 // If manifest is nil, it behaves like the original (no persistence).
-func CloneAllDAG(org, reposDir string, manifest *Manifest, cb CloneCallback) ([]CloneResult, [][]string, error) {
+func CloneAllDAG(org, reposDir, branch string, manifest *Manifest, cb CloneCallback) ([]CloneResult, [][]string, error) {
 	g := dag.FrameworkGraph()
 	layers, err := g.Layers()
 	if err != nil {
@@ -144,7 +144,7 @@ func CloneAllDAG(org, reposDir string, manifest *Manifest, cb CloneCallback) ([]
 				}
 			} else {
 				url := git.RepoURL(org, repo)
-				cloneErr := git.CloneQuiet(url, target)
+				cloneErr := git.CloneQuiet(url, target, branch)
 				r = CloneResult{Repo: repo, Error: cloneErr}
 				if manifest != nil {
 					manifest.MarkClone(repo, cloneErr)
