@@ -7,18 +7,18 @@
 [![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey)]()
 
 ```
-  _____.__                _____.__
-_/ ____\__|______   _____/ ____\  | ___.__.
-\   __\|  \_  __ \_/ __ \   __\|  |<   |  |
- |  |  |  ||  | \/\  ___/|  |  |  |_\___  |
- |__|  |__||__|    \___  >__|  |____/ ____|
-                       \/           \/
-  _____                                                 __
-_/ ____\___________    _____   ______  _  _____________|  | __
-\   __\_  __ \__  \  /     \_/ __ \ \/ \/ /  _ \_  __ \  |/ /
- |  |   |  | \// __ \|  Y Y  \  ___/\     (  <_> )  | \/    <
- |__|   |__|  (____  /__|_|  /\___  >\/\_/ \____/|__|  |__|_ \
-                   \/      \/     \/                        \/
+  _____.__ _____.__
+_/ ____\__|______ _____/ ____\ | ___.__.
+\ __\| \_ __ \_/ __ \ __\| |< | |
+ | | | || | \/\ ___/| | | |_\___ |
+ |__| |__||__| \___ >__| |____/ ____|
+                       \/ \/
+  _____ __
+_/ ____\___________ _____ ______ _ _____________| | __
+\ __\_ __ \__ \ / \_/ __ \ \/ \/ / _ \_ __ \ |/ /
+ | | | | \// __ \| Y Y \ ___/\ ( <_> ) | \/ <
+ |__| |__| (____ /__|_| /\___ >\/\_/ \____/|__| |__|_ \
+                   \/ \/ \/ \/
 ```
 
 The official command-line interface for the **Firefly Framework** — scaffold, setup, diagnose, and manage your Firefly-based Java microservices with a world-class developer experience.
@@ -58,13 +58,13 @@ Bootstraps the entire Firefly Framework into your local environment. Clones all 
 The CLI resolves a dependency graph across all repositories, groups them into layers, and processes each layer sequentially to guarantee correct compilation order. Progress is shown with real-time progress bars, per-repo spinners with elapsed time, and a final summary box.
 
 ```bash
-flywork setup                  # full interactive setup (prompts whether to run tests)
-flywork setup --skip-tests     # skip tests during Maven install
-flywork setup --retry          # retry only previously failed repositories
-flywork setup --fresh          # ignore previous manifest, start from scratch
-flywork setup --fetch-updates  # also fetch updates for already-cloned repos
-flywork setup --jdk /path      # use a specific JDK instead of auto-detection
-flywork setup -v               # verbose: show DAG layers and per-repo status
+flywork setup # full interactive setup (prompts whether to run tests)
+flywork setup --skip-tests # skip tests during Maven install
+flywork setup --retry # retry only previously failed repositories
+flywork setup --fresh # ignore previous manifest, start from scratch
+flywork setup --fetch-updates # also fetch updates for already-cloned repos
+flywork setup --jdk /path # use a specific JDK instead of auto-detection
+flywork setup -v # verbose: show DAG layers and per-repo status
 ```
 
 When `--skip-tests` is not provided, the CLI interactively asks whether to run tests (default: **yes**).
@@ -93,20 +93,20 @@ When `--skip-tests` is not provided, the CLI interactively asks whether to run t
 
 Scaffolds a new project from one of four YAML-driven archetypes:
 
-| Archetype       | Description                                                        |
+| Archetype | Description |
 |-----------------|--------------------------------------------------------------------|
-| **core**        | Multi-module microservice with R2DBC, Flyway, MapStruct, OpenAPI SDK |
-| **domain**      | Multi-module CQRS/Saga microservice with transactional engine        |
-| **application** | Single-module application with plugin architecture                   |
-| **library**     | Single-module library with Spring Boot auto-configuration            |
+| **core** | Multi-module microservice with R2DBC, Flyway, MapStruct, OpenAPI SDK |
+| **domain** | Multi-module CQRS/Saga microservice with transactional engine |
+| **application** | Single-module application with plugin architecture |
+| **library** | Single-module library with Spring Boot auto-configuration |
 
 ```bash
-flywork create                                              # fully interactive mode
-flywork create core                                         # core archetype with prompts
+flywork create # fully interactive mode
+flywork create core # core archetype with prompts
 flywork create domain --group-id com.example --artifact-id my-service
 flywork create application -g com.example -a my-app -d "My Application"
 flywork create library -g com.example -a my-lib --no-git
-flywork create core --version 1.0.0 -o ./output-dir         # custom version and output
+flywork create core --version 1.0.0 -o ./output-dir # custom version and output
 ```
 
 If no archetype or flags are provided, the CLI enters interactive mode with prompts for archetype selection, group ID, artifact ID, package name, description, and infrastructure defaults.
@@ -145,11 +145,11 @@ flywork doctor
 Pulls the latest changes for all framework repositories and reinstalls them to `.m2`, respecting DAG dependency order.
 
 ```bash
-flywork update                                        # pull + install all (prompts for tests)
-flywork update --skip-tests                           # pull + install without tests
-flywork update --pull-only                            # only git pull, skip maven
-flywork update --repo fireflyframework-utils          # single repo
-flywork update -v                                     # verbose with layer info
+flywork update # pull + install all (prompts for tests)
+flywork update --skip-tests # pull + install without tests
+flywork update --pull-only # only git pull, skip maven
+flywork update --repo fireflyframework-utils # single repo
+flywork update -v # verbose with layer info
 ```
 
 When `--skip-tests` is not provided (and not `--pull-only`), the CLI interactively asks whether to run tests (default: **yes**).
@@ -172,12 +172,12 @@ The update command uses the same DAG resolver as `setup`, with two distinct phas
 Smart DAG-aware build with SHA-based change detection. Detects which repos have changed since the last successful build, computes the transitive closure of affected downstream repos, and builds them in dependency order.
 
 ```bash
-flywork build                  # build changed repos + affected dependents
-flywork build --all            # rebuild everything (ignore change detection)
-flywork build --repo <name>    # build a specific repo and its dependents
-flywork build --dry-run        # show what would be built without building
-flywork build --skip-tests     # skip running tests during Maven install
-flywork build --jdk /path      # use an explicit JAVA_HOME
+flywork build # build changed repos + affected dependents
+flywork build --all # rebuild everything (ignore change detection)
+flywork build --repo <name> # build a specific repo and its dependents
+flywork build --dry-run # show what would be built without building
+flywork build --skip-tests # skip running tests during Maven install
+flywork build --jdk /path # use an explicit JAVA_HOME
 ```
 
 **Flags:**
@@ -203,12 +203,12 @@ flywork build --jdk /path      # use an explicit JAVA_HOME
 Publishes Maven artifacts to GitHub Packages in DAG-resolved order. Uses the same change detection as `build` to only publish what has changed.
 
 ```bash
-flywork publish                # publish changed repos
-flywork publish --all          # publish everything
-flywork publish --repo <name>  # publish a specific repo
-flywork publish --dry-run      # show what would be published
-flywork publish --skip-tests   # skip tests during deploy (default: true)
-flywork publish --jdk /path    # use an explicit JAVA_HOME
+flywork publish # publish changed repos
+flywork publish --all # publish everything
+flywork publish --repo <name> # publish a specific repo
+flywork publish --dry-run # show what would be published
+flywork publish --skip-tests # skip tests during deploy (default: true)
+flywork publish --jdk /path # use an explicit JAVA_HOME
 ```
 
 **Flags:**
@@ -236,11 +236,11 @@ Requires `GITHUB_TOKEN` environment variable set with `write:packages` scope.
 Inspect and query the framework dependency graph. Useful for understanding build order, debugging dependency issues, and CI/CD integration.
 
 ```bash
-flywork dag show                          # display full graph as ASCII tree
-flywork dag layers                        # show repos grouped by build layer
-flywork dag affected --from <repo>        # compute transitive closure of affected repos
+flywork dag show # display full graph as ASCII tree
+flywork dag layers # show repos grouped by build layer
+flywork dag affected --from <repo> # compute transitive closure of affected repos
 flywork dag affected --from <repo> --json # machine-readable output
-flywork dag export                        # export full DAG as JSON for CI/CD consumption
+flywork dag export # export full DAG as JSON for CI/CD consumption
 ```
 
 **Subcommands:**
@@ -257,13 +257,13 @@ flywork dag export                        # export full DAG as JSON for CI/CD co
 Manage framework-wide CalVer versions across all repositories. CalVer format: `YY.MM.PP` (e.g., `26.01.01`).
 
 ```bash
-flywork fwversion show                    # show current version across all repos
-flywork fwversion bump --auto             # auto-compute next CalVer and bump all POMs
-flywork fwversion bump --auto --push      # bump, commit, tag, and push
-flywork fwversion bump --dry-run          # preview changes without modifying files
-flywork fwversion bump --install          # bump + run mvn install after
-flywork fwversion check                   # validate version consistency across repos
-flywork fwversion families                # show version family release history
+flywork fwversion show # show current version across all repos
+flywork fwversion bump --auto # auto-compute next CalVer and bump all POMs
+flywork fwversion bump --auto --push # bump, commit, tag, and push
+flywork fwversion bump --dry-run # preview changes without modifying files
+flywork fwversion bump --install # bump + run mvn install after
+flywork fwversion check # validate version consistency across repos
+flywork fwversion families # show version family release history
 ```
 
 **Subcommands:**
@@ -291,10 +291,10 @@ flywork fwversion families                # show version family release history
 Runs a Firefly Framework application with interactive configuration assistance. Detects the Spring Boot module, scans configuration files for missing environment variables, and launches an interactive wizard before starting the app.
 
 ```bash
-flywork run                            # interactive run with configuration wizard
-flywork run --profile dev              # activate the 'dev' Spring profile
-flywork run --skip-wizard              # skip the configuration wizard
-flywork run --profile local --skip-wizard   # non-interactive run with 'local' profile
+flywork run # interactive run with configuration wizard
+flywork run --profile dev # activate the 'dev' Spring profile
+flywork run --skip-wizard # skip the configuration wizard
+flywork run --profile local --skip-wizard # non-interactive run with 'local' profile
 ```
 
 **What it does:**
@@ -317,8 +317,8 @@ flywork run --profile local --skip-wizard   # non-interactive run with 'local' p
 Self-updates the CLI binary from GitHub releases.
 
 ```bash
-flywork upgrade            # download and install latest version
-flywork upgrade --check    # just check if an update is available
+flywork upgrade # download and install latest version
+flywork upgrade --check # just check if an update is available
 ```
 
 **Flags:**
@@ -332,11 +332,11 @@ flywork upgrade --check    # just check if an update is available
 View and manage CLI configuration stored in `~/.flywork/config.yaml`.
 
 ```bash
-flywork config                          # show all configuration
-flywork config get java_version         # get a single value
-flywork config set java_version 25      # set a value
+flywork config # show all configuration
+flywork config get java_version # get a single value
+flywork config set java_version 25 # set a value
 flywork config set parent_version 1.0.0-SNAPSHOT
-flywork config reset                    # reset to defaults
+flywork config reset # reset to defaults
 ```
 
 ### `flywork version`
@@ -505,74 +505,74 @@ irm https://raw.githubusercontent.com/fireflyframework/fireflyframework-cli/main
 ### Build Targets
 
 ```bash
-make build       # build for current platform → bin/flywork
-make install     # build + install to /usr/local/bin
-make test        # run tests
-make vet         # run go vet
-make clean       # remove build artifacts
-make build-all   # cross-compile for 6 platforms (darwin/linux/windows × amd64/arm64)
-make release     # build-all + create .tar.gz / .zip archives
-make checksums   # release + SHA256 checksums
+make build # build for current platform → bin/flywork
+make install # build + install to /usr/local/bin
+make test # run tests
+make vet # run go vet
+make clean # remove build artifacts
+make build-all # cross-compile for 6 platforms (darwin/linux/windows × amd64/arm64)
+make release # build-all + create .tar.gz / .zip archives
+make checksums # release + SHA256 checksums
 ```
 
 ### Project Structure
 
 ```
 fireflyframework-cli/
-├── cmd/                          # Cobra command definitions
-│   ├── root.go                   # Root command, banner, global flags
-│   ├── setup.go                  # flywork setup (DAG + TUI)
-│   ├── create.go                 # flywork create (interactive scaffolding)
-│   ├── doctor.go                 # flywork doctor (environment checks)
-│   ├── update.go                 # flywork update (DAG + TUI)
-│   ├── build.go                  # flywork build (smart DAG build)
-│   ├── publish.go                # flywork publish (GitHub Packages deploy)
-│   ├── dag.go                    # flywork dag (graph inspection)
-│   ├── fwversion.go              # flywork fwversion (CalVer management)
-│   ├── upgrade.go                # flywork upgrade (self-update)
-│   ├── config.go                 # flywork config (get/set/reset)
-│   ├── run.go                    # flywork run (application runner)
-│   └── version.go                # flywork version
+├── cmd/ # Cobra command definitions
+│ ├── root.go # Root command, banner, global flags
+│ ├── setup.go # flywork setup (DAG + TUI)
+│ ├── create.go # flywork create (interactive scaffolding)
+│ ├── doctor.go # flywork doctor (environment checks)
+│ ├── update.go # flywork update (DAG + TUI)
+│ ├── build.go # flywork build (smart DAG build)
+│ ├── publish.go # flywork publish (GitHub Packages deploy)
+│ ├── dag.go # flywork dag (graph inspection)
+│ ├── fwversion.go # flywork fwversion (CalVer management)
+│ ├── upgrade.go # flywork upgrade (self-update)
+│ ├── config.go # flywork config (get/set/reset)
+│ ├── run.go # flywork run (application runner)
+│ └── version.go # flywork version
 ├── internal/
-│   ├── build/                    # Smart build engine
-│   │   ├── builder.go            # DAG-ordered build execution
-│   │   ├── changes.go            # SHA-based change detection
-│   │   └── manifest.go           # Build manifest (last-known SHAs)
-│   ├── config/config.go          # YAML config management
-│   ├── dag/graph.go              # DAG engine (topological sort, layers, cycle detection)
-│   ├── doctor/checks.go          # Diagnostic checks
-│   ├── git/git.go                # Git operations
-│   ├── java/java.go              # Cross-platform Java detection
-│   ├── maven/maven.go            # Maven operations with JAVA_HOME support
-│   ├── publish/                  # Publish engine
-│   │   ├── publisher.go          # DAG-ordered Maven deploy
-│   │   ├── python.go             # Python package publishing
-│   │   └── settings.go           # Maven settings.xml management
-│   ├── runner/                   # Application runner with config wizard
-│   ├── scaffold/                 # Archetype engine
-│   │   ├── engine.go             # Template rendering and project generation
-│   │   ├── archetypes/*.yaml     # Embedded archetype definitions
-│   │   └── templates/*           # Embedded Go templates
-│   ├── selfupdate/updater.go     # CLI self-update from GitHub releases
-│   ├── setup/                    # Setup operations
-│   │   ├── cloner.go             # DAG-ordered git clone
-│   │   └── installer.go          # DAG-ordered maven install
-│   ├── version/                  # Framework version management
-│   │   ├── calver.go             # CalVer parsing and computation
-│   │   ├── bumper.go             # POM version bumping across all repos
-│   │   ├── checker.go            # Version consistency validation
-│   │   └── families.go           # Version family tracking and history
-│   └── ui/                       # TUI components
-│       ├── printer.go            # Styled output, spinners, progress bars, summary boxes
-│       └── prompt.go             # Interactive prompts
-├── install.sh                    # curl | bash installer (macOS/Linux)
-├── install.ps1                   # irm | iex installer (Windows)
-├── uninstall.sh                  # Uninstaller (macOS/Linux)
-├── uninstall.ps1                 # Uninstaller (Windows)
-├── Makefile                      # Build targets for 6 platforms
+│ ├── build/ # Smart build engine
+│ │ ├── builder.go # DAG-ordered build execution
+│ │ ├── changes.go # SHA-based change detection
+│ │ └── manifest.go # Build manifest (last-known SHAs)
+│ ├── config/config.go # YAML config management
+│ ├── dag/graph.go # DAG engine (topological sort, layers, cycle detection)
+│ ├── doctor/checks.go # Diagnostic checks
+│ ├── git/git.go # Git operations
+│ ├── java/java.go # Cross-platform Java detection
+│ ├── maven/maven.go # Maven operations with JAVA_HOME support
+│ ├── publish/ # Publish engine
+│ │ ├── publisher.go # DAG-ordered Maven deploy
+│ │ ├── python.go # Python package publishing
+│ │ └── settings.go # Maven settings.xml management
+│ ├── runner/ # Application runner with config wizard
+│ ├── scaffold/ # Archetype engine
+│ │ ├── engine.go # Template rendering and project generation
+│ │ ├── archetypes/*.yaml # Embedded archetype definitions
+│ │ └── templates/* # Embedded Go templates
+│ ├── selfupdate/updater.go # CLI self-update from GitHub releases
+│ ├── setup/ # Setup operations
+│ │ ├── cloner.go # DAG-ordered git clone
+│ │ └── installer.go # DAG-ordered maven install
+│ ├── version/ # Framework version management
+│ │ ├── calver.go # CalVer parsing and computation
+│ │ ├── bumper.go # POM version bumping across all repos
+│ │ ├── checker.go # Version consistency validation
+│ │ └── families.go # Version family tracking and history
+│ └── ui/ # TUI components
+│ ├── printer.go # Styled output, spinners, progress bars, summary boxes
+│ └── prompt.go # Interactive prompts
+├── install.sh # curl | bash installer (macOS/Linux)
+├── install.ps1 # irm | iex installer (Windows)
+├── uninstall.sh # Uninstaller (macOS/Linux)
+├── uninstall.ps1 # Uninstaller (Windows)
+├── Makefile # Build targets for 6 platforms
 ├── go.mod / go.sum
-├── LICENSE                       # Apache License 2.0
-└── main.go                       # Entry point
+├── LICENSE # Apache License 2.0
+└── main.go # Entry point
 ```
 
 ---
