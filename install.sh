@@ -2,7 +2,7 @@
 # Firefly Framework CLI Installer
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/fireflyframework/fireflyframework-cli/main/install.sh | bash
-#   FLYWORK_VERSION=v26.01.01 bash install.sh
+#   FLYWORK_VERSION=v26.02.01 bash install.sh
 #   FLYWORK_INSTALL_DIR=/custom/path bash install.sh
 
 set -euo pipefail

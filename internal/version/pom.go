@@ -57,7 +57,7 @@ func FindAllPoms(repoDir string) []string {
 
 // ReplacePomVersion replaces all occurrences of oldVer with newVer in the given file.
 // This is a simple string replacement which is safe for framework version strings
-// (e.g. "1.0.0-SNAPSHOT" or "26.01.01") that don't collide with library versions.
+// (e.g. "1.0.0-SNAPSHOT" or "26.02.01") that don't collide with library versions.
 func ReplacePomVersion(pomPath, oldVer, newVer string) error {
 	data, err := os.ReadFile(pomPath)
 	if err != nil {
