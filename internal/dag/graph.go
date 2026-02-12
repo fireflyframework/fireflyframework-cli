@@ -361,6 +361,7 @@ func FrameworkGraph() *Graph {
 		configServer     = "fireflyframework-config-server"
 		application      = "fireflyframework-application"
 		backoffice       = "fireflyframework-backoffice"
+		observability    = "fireflyframework-observability"
 	)
 
 	// ── Layer 0: root ──────────────────────────────────────────────────
@@ -370,26 +371,36 @@ func FrameworkGraph() *Graph {
 	g.AddEdge(bom, parent)
 	for _, mod := range []string{
 		utils, cache, eda, ecm, idp, configServer,
-		client, validators, plugins, transactionalEng,
+		client, validators, plugins, transactionalEng, observability,
 	} {
 		g.AddEdge(mod, parent)
 	}
+
+	// ── Layer 1.5: observability consumers (depend on observability) ────
+	// These modules gain an edge to observability for centralized metrics/tracing/health
+	g.AddEdge(eda, observability)
+	g.AddEdge(client, observability)
+	g.AddEdge(transactionalEng, observability)
+	g.AddEdge(ecm, observability)
 
 	// ── Layer 2: modules with single-level framework dependencies ─────
 
 	// r2dbc depends on utils
 	g.AddEdge(r2dbc, utils)
 
-	// cqrs depends on validators, cache
+	// cqrs depends on validators, cache, observability
 	g.AddEdge(cqrs, validators)
 	g.AddEdge(cqrs, cache)
+	g.AddEdge(cqrs, observability)
 
-	// web depends on cache
+	// web depends on cache, observability
 	g.AddEdge(web, cache)
+	g.AddEdge(web, observability)
 
-	// workflow depends on cache, eda
+	// workflow depends on cache, eda, observability
 	g.AddEdge(workflow, cache)
 	g.AddEdge(workflow, eda)
+	g.AddEdge(workflow, observability)
 
 	// ECM implementation modules
 	g.AddEdge(ecmEsigAdobe, ecm)
@@ -404,39 +415,44 @@ func FrameworkGraph() *Graph {
 
 	// ── Layer 3: modules with deeper dependencies ─────────────────────
 
-	// eventsourcing depends on r2dbc, eda, cache
+	// eventsourcing depends on r2dbc, eda, cache, observability
 	g.AddEdge(eventsourcing, r2dbc)
 	g.AddEdge(eventsourcing, eda)
 	g.AddEdge(eventsourcing, cache)
+	g.AddEdge(eventsourcing, observability)
 
-	// application depends on client, cache, cqrs, eda
+	// application depends on client, cache, cqrs, eda, observability
 	g.AddEdge(application, client)
 	g.AddEdge(application, cache)
 	g.AddEdge(application, cqrs)
 	g.AddEdge(application, eda)
+	g.AddEdge(application, observability)
 
 	// idp-internal-db depends on idp, r2dbc
 	g.AddEdge(idpInternalDB, idp)
 	g.AddEdge(idpInternalDB, r2dbc)
 
-	// core depends on eda, cqrs, transactional-engine
+	// core depends on eda, cqrs, transactional-engine, observability
 	g.AddEdge(core, cqrs)
 	g.AddEdge(core, eda)
 	g.AddEdge(core, transactionalEng)
+	g.AddEdge(core, observability)
 
-	// domain depends on validators, transactional-engine, cqrs, client, eda
+	// domain depends on validators, transactional-engine, cqrs, client, eda, observability
 	g.AddEdge(domain, validators)
 	g.AddEdge(domain, transactionalEng)
 	g.AddEdge(domain, cqrs)
 	g.AddEdge(domain, client)
 	g.AddEdge(domain, eda)
+	g.AddEdge(domain, observability)
 
-	// data depends on client, cqrs, eda, cache, transactional-engine
+	// data depends on client, cqrs, eda, cache, transactional-engine, observability
 	g.AddEdge(data, client)
 	g.AddEdge(data, cqrs)
 	g.AddEdge(data, eda)
 	g.AddEdge(data, cache)
 	g.AddEdge(data, transactionalEng)
+	g.AddEdge(data, observability)
 
 	// ── Layer 4: modules that depend on core/domain/data ──────────────
 
@@ -451,19 +467,21 @@ func FrameworkGraph() *Graph {
 	g.AddEdge(ruleEngine, web)
 	g.AddEdge(ruleEngine, r2dbc)
 
-	// webhooks depends on core, eda, cache, web
+	// webhooks depends on core, eda, cache, web, observability
 	g.AddEdge(webhooks, core)
 	g.AddEdge(webhooks, eda)
 	g.AddEdge(webhooks, cache)
 	g.AddEdge(webhooks, web)
+	g.AddEdge(webhooks, observability)
 
-	// callbacks depends on core, eda, r2dbc, web
+	// callbacks depends on core, eda, r2dbc, web, observability
 	g.AddEdge(callbacks, core)
 	g.AddEdge(callbacks, eda)
 	g.AddEdge(callbacks, r2dbc)
 	g.AddEdge(callbacks, web)
+	g.AddEdge(callbacks, observability)
 
-	// backoffice depends on core, domain, data, client, cache, cqrs, eda, application
+	// backoffice depends on core, domain, data, client, cache, cqrs, eda, application, observability
 	g.AddEdge(backoffice, core)
 	g.AddEdge(backoffice, domain)
 	g.AddEdge(backoffice, data)
@@ -472,6 +490,7 @@ func FrameworkGraph() *Graph {
 	g.AddEdge(backoffice, cqrs)
 	g.AddEdge(backoffice, eda)
 	g.AddEdge(backoffice, application)
+	g.AddEdge(backoffice, observability)
 
 	// ── Layer 5: notification implementations → notifications ─────────
 	g.AddEdge(notifFirebase, notifications)

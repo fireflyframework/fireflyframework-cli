@@ -29,6 +29,7 @@ var FrameworkRepos = []string{
 	"fireflyframework-utils",
 	"fireflyframework-validators",
 	"fireflyframework-plugins",
+	"fireflyframework-observability",
 	"fireflyframework-cache",
 	"fireflyframework-r2dbc",
 	"fireflyframework-eda",

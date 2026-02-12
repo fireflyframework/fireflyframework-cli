@@ -102,6 +102,7 @@ modules:
       - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-actuator" }
       - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-validation" }
       - { groupId: "org.springdoc", artifactId: "springdoc-openapi-starter-webflux-ui" }
+      - { groupId: "org.fireflyframework", artifactId: "fireflyframework-observability" }
       - { groupId: "io.micrometer", artifactId: "micrometer-registry-prometheus" }
       - { groupId: "org.projectlombok", artifactId: "lombok", scope: "provided" }
     testDependencies:
