@@ -59,7 +59,7 @@ type UpdateResult struct {
 }
 
 // CheckForUpdate queries GitHub for the latest release and compares versions.
-// Versions follow CalVer YY.MM.Patch (e.g. 26.02.01 = 2026 Jan patch 1).
+// Versions follow CalVer YY.MM.Patch (e.g. 26.02.02 = 2026 Jan patch 1).
 func CheckForUpdate(currentVersion string) (*UpdateResult, error) {
 	release, err := fetchLatestRelease()
 	if err != nil {

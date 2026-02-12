@@ -39,7 +39,7 @@ Valid configuration keys:
   github_org         GitHub organization name (default: fireflyframework)
   default_group_id   Default Maven groupId for new projects (default: org.fireflyframework)
   java_version       Target Java version for compilation (default: 25)
-  parent_version     Parent POM version for archetypes (default: 26.02.01)
+  parent_version     Parent POM version for archetypes (default: 26.02.02)
   cli_auto_update    Auto-check for CLI updates on launch (default: false)
   branch             Git branch to clone during setup (default: develop)
 
