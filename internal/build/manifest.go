@@ -108,9 +108,14 @@ func (m *BuildManifest) SetPath(p string) {
 }
 
 // LastSHA returns the last successfully built SHA for a repo, or "" if unknown.
+// Only returns a SHA if the last build was successful — failed builds are
+// always retried regardless of whether the SHA has changed.
 func (m *BuildManifest) LastSHA(repo string) string {
 	bs, ok := m.Repos[repo]
 	if !ok {
+		return ""
+	}
+	if bs.Status == "failed" {
 		return ""
 	}
 	return bs.LastBuildSHA

@@ -36,7 +36,7 @@ var fwversionCmd = &cobra.Command{
 	Short: "Manage framework-wide CalVer versions",
 	Long: `Show, bump, check, and track CalVer versions across all Firefly Framework
 repositories. The framework uses Calendar Versioning (CalVer) in the format
-YY.MM.PP (e.g. 26.02.02).
+YY.MM.PP (e.g. 26.02.03).
 
 Available Subcommands:
   show       Show current framework version across all repos

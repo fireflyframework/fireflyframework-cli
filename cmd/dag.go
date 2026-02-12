@@ -67,8 +67,9 @@ parallel.`,
 }
 
 var (
-	dagAffectedFrom string
-	dagAffectedJSON bool
+	dagAffectedFrom   string
+	dagAffectedJSON   bool
+	dagAffectedLayers bool
 )
 
 var dagAffectedCmd = &cobra.Command{
@@ -81,10 +82,12 @@ depend on the source.
 
 The --from flag is required and must be a valid repository name from the DAG.
 Use --json for machine-readable output suitable for CI/CD pipelines.
+Use --layers to group affected repos by dependency layer for ordered dispatch.
 
 Examples:
   flywork dag affected --from fireflyframework-utils
-  flywork dag affected --from fireflyframework-web --json`,
+  flywork dag affected --from fireflyframework-web --json
+  flywork dag affected --from fireflyframework-utils --layers --json`,
 	RunE: runDagAffected,
 }
 
@@ -103,6 +106,7 @@ dependency relationships.`,
 func init() {
 	dagAffectedCmd.Flags().StringVar(&dagAffectedFrom, "from", "", "Source repo to compute affected repos from (required)")
 	dagAffectedCmd.Flags().BoolVar(&dagAffectedJSON, "json", false, "Output as JSON")
+	dagAffectedCmd.Flags().BoolVar(&dagAffectedLayers, "layers", false, "Group affected repos by dependency layer")
 	_ = dagAffectedCmd.MarkFlagRequired("from")
 
 	dagExportCmd.Flags().BoolVar(&dagExportJSON, "json", true, "Export as JSON (default)")
@@ -191,6 +195,34 @@ func runDagAffected(_ *cobra.Command, _ []string) error {
 
 	affected := g.TransitiveDependentsOf(dagAffectedFrom)
 
+	if dagAffectedJSON && dagAffectedLayers {
+		// Build a subgraph of affected repos and compute layers
+		affectedSet := make(map[string]bool, len(affected))
+		for _, repo := range affected {
+			affectedSet[repo] = true
+		}
+		sub := g.Subgraph(affectedSet)
+		layers, err := sub.Layers()
+		if err != nil {
+			return fmt.Errorf("failed to compute layers: %w", err)
+		}
+		out := struct {
+			Source string     `json:"source"`
+			Layers [][]string `json:"layers"`
+			Count  int        `json:"count"`
+		}{
+			Source: dagAffectedFrom,
+			Layers: layers,
+			Count:  len(affected),
+		}
+		data, err := json.MarshalIndent(out, "", "  ")
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(data))
+		return nil
+	}
+
 	if dagAffectedJSON {
 		out := struct {
 			Source   string   `json:"source"`
@@ -218,9 +250,30 @@ func runDagAffected(_ *cobra.Command, _ []string) error {
 		return nil
 	}
 
-	for _, repo := range affected {
-		short := strings.TrimPrefix(repo, "fireflyframework-")
-		fmt.Printf("  %s %s\n", ui.StyleMuted.Render("•"), short)
+	if dagAffectedLayers {
+		affectedSet := make(map[string]bool, len(affected))
+		for _, repo := range affected {
+			affectedSet[repo] = true
+		}
+		sub := g.Subgraph(affectedSet)
+		layers, err := sub.Layers()
+		if err != nil {
+			return fmt.Errorf("failed to compute layers: %w", err)
+		}
+		for i, layer := range layers {
+			label := fmt.Sprintf("Layer %d (%d repos)", i, len(layer))
+			fmt.Printf("  %s\n", ui.StylePrimary.Render(label))
+			for _, repo := range layer {
+				short := strings.TrimPrefix(repo, "fireflyframework-")
+				fmt.Printf("    %s %s\n", ui.StyleMuted.Render("•"), short)
+			}
+			p.Newline()
+		}
+	} else {
+		for _, repo := range affected {
+			short := strings.TrimPrefix(repo, "fireflyframework-")
+			fmt.Printf("  %s %s\n", ui.StyleMuted.Render("•"), short)
+		}
 	}
 	p.Newline()
 	p.Info(fmt.Sprintf("%d repos affected", len(affected)))
