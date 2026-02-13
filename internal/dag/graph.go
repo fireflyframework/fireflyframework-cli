@@ -325,6 +325,7 @@ func FrameworkGraph() *Graph {
 	const (
 		parent           = "fireflyframework-parent"
 		bom              = "fireflyframework-bom"
+		kernel           = "fireflyframework-kernel"
 		utils            = "fireflyframework-utils"
 		validators       = "fireflyframework-validators"
 		plugins          = "fireflyframework-plugins"
@@ -367,13 +368,24 @@ func FrameworkGraph() *Graph {
 	// ── Layer 0: root ──────────────────────────────────────────────────
 	g.AddNode(parent)
 
-	// ── Layer 1: bom + leaf modules (only depend on parent POM) ───────
+	// ── Layer 0.5: kernel (foundational — only depends on parent) ────
+	g.AddEdge(kernel, parent)
+
+	// ── Layer 1: bom + leaf modules (depend on parent POM + kernel) ──
 	g.AddEdge(bom, parent)
 	for _, mod := range []string{
 		utils, cache, eda, ecm, idp, configServer,
 		client, validators, plugins, transactionalEng, observability,
 	} {
 		g.AddEdge(mod, parent)
+	}
+
+	// All framework modules depend on kernel for unified exception hierarchy
+	for _, mod := range []string{
+		utils, cache, eda, cqrs, eventsourcing, workflow, client,
+		web, transactionalEng, application, plugins, ruleEngine, data,
+	} {
+		g.AddEdge(mod, kernel)
 	}
 
 	// ── Layer 1.5: observability consumers (depend on observability) ────
@@ -388,9 +400,10 @@ func FrameworkGraph() *Graph {
 	// r2dbc depends on utils
 	g.AddEdge(r2dbc, utils)
 
-	// cqrs depends on validators, cache, observability
+	// cqrs depends on validators, cache, eda (optional bridge), observability
 	g.AddEdge(cqrs, validators)
 	g.AddEdge(cqrs, cache)
+	g.AddEdge(cqrs, eda)
 	g.AddEdge(cqrs, observability)
 
 	// web depends on cache, observability
