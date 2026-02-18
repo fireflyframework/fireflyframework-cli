@@ -383,7 +383,7 @@ func FrameworkGraph() *Graph {
 
 	// All framework modules depend on kernel for unified exception hierarchy
 	for _, mod := range []string{
-		utils, cache, eda, cqrs, eventsourcing, workflow, client,
+		idp, utils, cache, eda, cqrs, eventsourcing, workflow, client,
 		web, transactionalEng, application, plugins, ruleEngine, data,
 	} {
 		g.AddEdge(mod, kernel)
