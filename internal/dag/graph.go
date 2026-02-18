@@ -351,6 +351,7 @@ func FrameworkGraph() *Graph {
 		idpCognito       = "fireflyframework-idp-aws-cognito"
 		idpInternalDB    = "fireflyframework-idp-internal-db"
 		idpKeycloak      = "fireflyframework-idp-keycloak"
+		idpAzureAD       = "fireflyframework-idp-azure-ad"
 		notifications    = "fireflyframework-notifications"
 		notifFirebase    = "fireflyframework-notifications-firebase"
 		notifResend      = "fireflyframework-notifications-resend"
@@ -425,6 +426,7 @@ func FrameworkGraph() *Graph {
 	// IDP implementation modules
 	g.AddEdge(idpCognito, idp)
 	g.AddEdge(idpKeycloak, idp)
+	g.AddEdge(idpAzureAD, idp)
 
 	// ── Layer 3: modules with deeper dependencies ─────────────────────
 
