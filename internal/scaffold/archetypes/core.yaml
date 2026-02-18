@@ -60,7 +60,7 @@ modules:
     dependencies:
       - { groupId: "{{.GroupId}}", artifactId: "{{.ArtifactId}}-interfaces", internal: true }
       - { groupId: "{{.GroupId}}", artifactId: "{{.ArtifactId}}-models", internal: true }
-      - { groupId: "org.fireflyframework", artifactId: "fireflyframework-core" }
+      - { groupId: "org.fireflyframework", artifactId: "fireflyframework-starter-core" }
       - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-webflux" }
       - { groupId: "org.mapstruct", artifactId: "mapstruct" }
       - { groupId: "org.projectlombok", artifactId: "lombok", scope: "provided" }

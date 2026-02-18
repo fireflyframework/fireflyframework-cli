@@ -49,7 +49,7 @@ modules:
     dependencies:
       - { groupId: "{{.GroupId}}", artifactId: "{{.ArtifactId}}-interfaces", internal: true }
       - { groupId: "org.fireflyframework", artifactId: "fireflyframework-utils" }
-      - { groupId: "org.fireflyframework", artifactId: "fireflyframework-domain" }
+      - { groupId: "org.fireflyframework", artifactId: "fireflyframework-starter-domain" }
       - { groupId: "org.fireflyframework", artifactId: "fireflyframework-cqrs" }
       - { groupId: "org.fireflyframework", artifactId: "fireflyframework-transactional-engine" }
       - { groupId: "org.fireflyframework", artifactId: "fireflyframework-eda" }

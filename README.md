@@ -254,7 +254,7 @@ flywork dag export # export full DAG as JSON for CI/CD consumption
 
 ### `flywork fwversion`
 
-Manage framework-wide CalVer versions across all repositories. CalVer format: `YY.MM.PP` (e.g., `26.02.04`).
+Manage framework-wide CalVer versions across all repositories. CalVer format: `YY.MM.PP` (e.g., `26.02.05`).
 
 ```bash
 flywork fwversion show # show current version across all repos
@@ -391,7 +391,7 @@ Configuration is stored in `~/.flywork/config.yaml`.
 | `github_org` | `fireflyframework` | GitHub organization name |
 | `default_group_id` | `org.fireflyframework` | Default Maven groupId for new projects |
 | `java_version` | `25` | Target Java version for compilation |
-| `parent_version` | `26.02.04` | Parent POM CalVer version for archetypes |
+| `parent_version` | `26.02.05` | Parent POM CalVer version for archetypes |
 | `cli_auto_update` | `false` | Auto-check for CLI updates on launch |
 | `branch` | `develop` | Git branch to clone during setup |
 
