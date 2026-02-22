@@ -17,7 +17,7 @@ modules:
     dependencies:
       - { groupId: "org.fireflyframework", artifactId: "fireflyframework-utils" }
       - { groupId: "org.fireflyframework", artifactId: "fireflyframework-validators" }
-      - { groupId: "org.fireflyframework", artifactId: "fireflyframework-transactional-engine" }
+      - { groupId: "org.fireflyframework", artifactId: "fireflyframework-orchestration" }
       - { groupId: "org.projectlombok", artifactId: "lombok", scope: "provided" }
       - { groupId: "jakarta.validation", artifactId: "jakarta.validation-api" }
     templates:
@@ -51,7 +51,7 @@ modules:
       - { groupId: "org.fireflyframework", artifactId: "fireflyframework-utils" }
       - { groupId: "org.fireflyframework", artifactId: "fireflyframework-starter-domain" }
       - { groupId: "org.fireflyframework", artifactId: "fireflyframework-cqrs" }
-      - { groupId: "org.fireflyframework", artifactId: "fireflyframework-transactional-engine" }
+      - { groupId: "org.fireflyframework", artifactId: "fireflyframework-orchestration" }
       - { groupId: "org.fireflyframework", artifactId: "fireflyframework-eda" }
       - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-webflux" }
       - { groupId: "org.mapstruct", artifactId: "mapstruct" }
@@ -90,14 +90,14 @@ modules:
       - { src: "shared/openapi.yml.tmpl", dest: "src/main/resources/api-spec/openapi.yml" }
 
   - suffix: web
-    description: Spring Boot application with @EnableTransactionalEngine and controllers
+    description: Spring Boot application with orchestration and controllers
     packages:
       - controller
     dependencies:
       - { groupId: "{{.GroupId}}", artifactId: "{{.ArtifactId}}-core", internal: true }
       - { groupId: "{{.GroupId}}", artifactId: "{{.ArtifactId}}-interfaces", internal: true }
       - { groupId: "org.fireflyframework", artifactId: "fireflyframework-web" }
-      - { groupId: "org.fireflyframework", artifactId: "fireflyframework-transactional-engine" }
+      - { groupId: "org.fireflyframework", artifactId: "fireflyframework-orchestration" }
       - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-webflux" }
       - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-actuator" }
       - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-validation" }
@@ -117,7 +117,6 @@ modules:
       - "@SpringBootApplication"
       - "@EnableWebFlux"
       - "@ConfigurationPropertiesScan"
-      - "@EnableTransactionalEngine"
       - "@OpenAPIDefinition"
     templates:
       - { src: "domain/web-pom.xml.tmpl", dest: "pom.xml" }

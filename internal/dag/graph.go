@@ -334,13 +334,12 @@ func FrameworkGraph() *Graph {
 		eda              = "fireflyframework-eda"
 		cqrs             = "fireflyframework-cqrs"
 		eventsourcing    = "fireflyframework-eventsourcing"
-		transactionalEng = "fireflyframework-transactional-engine"
+		orchestration    = "fireflyframework-orchestration"
 		client           = "fireflyframework-client"
 		web              = "fireflyframework-web"
 		core             = "fireflyframework-core"
 		domain           = "fireflyframework-domain"
 		data             = "fireflyframework-data"
-		workflow         = "fireflyframework-workflow"
 		ecm              = "fireflyframework-ecm"
 		ecmEsigAdobe     = "fireflyframework-ecm-esignature-adobe-sign"
 		ecmEsigDocusign  = "fireflyframework-ecm-esignature-docusign"
@@ -376,15 +375,15 @@ func FrameworkGraph() *Graph {
 	g.AddEdge(bom, parent)
 	for _, mod := range []string{
 		utils, cache, eda, ecm, idp, configServer,
-		client, validators, plugins, transactionalEng, observability,
+		client, validators, plugins, observability,
 	} {
 		g.AddEdge(mod, parent)
 	}
 
 	// All framework modules depend on kernel for unified exception hierarchy
 	for _, mod := range []string{
-		idp, utils, cache, eda, cqrs, eventsourcing, workflow, client,
-		web, transactionalEng, application, plugins, ruleEngine, data,
+		idp, utils, cache, eda, cqrs, eventsourcing, orchestration, client,
+		web, application, plugins, ruleEngine, data,
 	} {
 		g.AddEdge(mod, kernel)
 	}
@@ -393,7 +392,6 @@ func FrameworkGraph() *Graph {
 	// These modules gain an edge to observability for centralized metrics/tracing/health
 	g.AddEdge(eda, observability)
 	g.AddEdge(client, observability)
-	g.AddEdge(transactionalEng, observability)
 	g.AddEdge(ecm, observability)
 
 	// ── Layer 2: modules with single-level framework dependencies ─────
@@ -411,10 +409,10 @@ func FrameworkGraph() *Graph {
 	g.AddEdge(web, cache)
 	g.AddEdge(web, observability)
 
-	// workflow depends on cache, eda, observability
-	g.AddEdge(workflow, cache)
-	g.AddEdge(workflow, eda)
-	g.AddEdge(workflow, observability)
+	// orchestration depends on cache, eda, observability
+	g.AddEdge(orchestration, cache)
+	g.AddEdge(orchestration, eda)
+	g.AddEdge(orchestration, observability)
 
 	// ECM implementation modules
 	g.AddEdge(ecmEsigAdobe, ecm)
@@ -447,26 +445,26 @@ func FrameworkGraph() *Graph {
 	g.AddEdge(idpInternalDB, idp)
 	g.AddEdge(idpInternalDB, r2dbc)
 
-	// core depends on eda, cqrs, transactional-engine, observability
+	// core depends on eda, cqrs, orchestration, observability
 	g.AddEdge(core, cqrs)
 	g.AddEdge(core, eda)
-	g.AddEdge(core, transactionalEng)
+	g.AddEdge(core, orchestration)
 	g.AddEdge(core, observability)
 
-	// domain depends on validators, transactional-engine, cqrs, client, eda, observability
+	// domain depends on validators, orchestration, cqrs, client, eda, observability
 	g.AddEdge(domain, validators)
-	g.AddEdge(domain, transactionalEng)
+	g.AddEdge(domain, orchestration)
 	g.AddEdge(domain, cqrs)
 	g.AddEdge(domain, client)
 	g.AddEdge(domain, eda)
 	g.AddEdge(domain, observability)
 
-	// data depends on client, cqrs, eda, cache, transactional-engine, observability
+	// data depends on client, cqrs, eda, cache, orchestration, observability
 	g.AddEdge(data, client)
 	g.AddEdge(data, cqrs)
 	g.AddEdge(data, eda)
 	g.AddEdge(data, cache)
-	g.AddEdge(data, transactionalEng)
+	g.AddEdge(data, orchestration)
 	g.AddEdge(data, observability)
 
 	// ── Layer 4: modules that depend on core/domain/data ──────────────

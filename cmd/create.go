@@ -50,7 +50,7 @@ archetype selection, group ID, artifact ID, package name, and description.
 Available archetypes:
   core          Multi-module microservice with R2DBC, Flyway, MapStruct, OpenAPI SDK,
                 and reactive services (5 modules: interfaces, models, core, sdk, web)
-  domain        Multi-module CQRS/Saga microservice with transactional engine
+  domain        Multi-module CQRS/Saga microservice with orchestration engine
                 (5 modules: interfaces, infra, core, sdk, web)
   application   Single-module application with plugin architecture and Spring Security
   library       Single-module library with Spring Boot auto-configuration

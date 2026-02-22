@@ -96,7 +96,7 @@ Scaffolds a new project from one of four YAML-driven archetypes:
 | Archetype | Description |
 |-----------------|--------------------------------------------------------------------|
 | **core** | Multi-module microservice with R2DBC, Flyway, MapStruct, OpenAPI SDK |
-| **domain** | Multi-module CQRS/Saga microservice with transactional engine |
+| **domain** | Multi-module CQRS/Saga microservice with orchestration engine |
 | **application** | Single-module application with plugin architecture |
 | **library** | Single-module library with Spring Boot auto-configuration |
 
@@ -373,8 +373,8 @@ The CLI maintains an internal **directed acyclic graph** of all 38 framework rep
 | Layer | Repositories |
 |-------|-------------|
 | 0 (1) | `parent` |
-| 1 (11) | `bom`, `utils`, `cache`, `eda`, `ecm`, `idp`, `config-server`, `client`, `validators`, `plugins`, `transactional-engine` |
-| 2 (11) | `r2dbc`, `cqrs`, `web`, `workflow`, `ecm-esignature-adobe-sign`, `ecm-esignature-docusign`, `ecm-esignature-logalty`, `ecm-storage-aws`, `ecm-storage-azure`, `idp-aws-cognito`, `idp-keycloak` |
+| 1 (10) | `bom`, `utils`, `cache`, `eda`, `ecm`, `idp`, `config-server`, `client`, `validators`, `plugins`, `observability` |
+| 2 (9) | `r2dbc`, `cqrs`, `web`, `orchestration`, `ecm-esignature-adobe-sign`, `ecm-esignature-docusign`, `ecm-esignature-logalty`, `ecm-storage-aws`, `ecm-storage-azure`, `idp-aws-cognito`, `idp-keycloak` |
 | 3 (6) | `eventsourcing`, `application`, `idp-internal-db`, `core`, `domain`, `data` |
 | 4 (5) | `webhooks`, `callbacks`, `notifications`, `rule-engine`, `backoffice` |
 | 5 (4) | `notifications-firebase`, `notifications-resend`, `notifications-sendgrid`, `notifications-twilio` |
