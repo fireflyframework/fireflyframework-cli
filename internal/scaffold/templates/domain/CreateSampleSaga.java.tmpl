@@ -4,8 +4,8 @@ import {{.BasePackage}}.interfaces.commands.SampleCommand;
 import {{.BasePackage}}.interfaces.dtos.SampleDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.fireflyframework.transactional.saga.annotations.Saga;
-import org.fireflyframework.transactional.saga.annotations.SagaStep;
+import org.fireflyframework.orchestration.saga.annotation.Saga;
+import org.fireflyframework.orchestration.saga.annotation.SagaStep;
 import reactor.core.publisher.Mono;
 
 @Slf4j
