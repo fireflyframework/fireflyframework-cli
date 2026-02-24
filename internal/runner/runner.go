@@ -146,7 +146,7 @@ func detectArchetype(dir string, modules []string) string {
 	}
 
 	// Application: uses fireflyframework-application
-	if strings.Contains(pomContent, "fireflyframework-application") {
+	if strings.Contains(pomContent, "fireflyframework-starter-application") {
 		return "application"
 	}
 

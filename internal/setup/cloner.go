@@ -38,9 +38,9 @@ var FrameworkRepos = []string{
 	"fireflyframework-orchestration",
 	"fireflyframework-client",
 	"fireflyframework-web",
-	"fireflyframework-core",
-	"fireflyframework-domain",
-	"fireflyframework-data",
+	"fireflyframework-starter-core",
+	"fireflyframework-starter-domain",
+	"fireflyframework-starter-data",
 	"fireflyframework-ecm",
 	"fireflyframework-ecm-esignature-adobe-sign",
 	"fireflyframework-ecm-esignature-docusign",
@@ -60,7 +60,7 @@ var FrameworkRepos = []string{
 	"fireflyframework-webhooks",
 	"fireflyframework-callbacks",
 	"fireflyframework-config-server",
-	"fireflyframework-application",
+	"fireflyframework-starter-application",
 	"fireflyframework-backoffice",
 }
 
