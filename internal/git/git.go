@@ -181,3 +181,17 @@ func DiffStatSince(dir, sinceCommit string) ([]string, error) {
 func RepoURL(org, repo string) string {
 	return fmt.Sprintf("https://github.com/%s/%s.git", org, repo)
 }
+
+// RunCmd runs an arbitrary git subcommand in the given directory and returns
+// the combined stdout/stderr on failure as the error message. Used by
+// orchestration commands that need git operations beyond the typed helpers
+// above (e.g. branch checkout, empty commits, annotated tags, force pushes).
+func RunCmd(dir string, args ...string) error {
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("git %s: %w (%s)", strings.Join(args, " "), err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}

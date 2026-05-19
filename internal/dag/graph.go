@@ -363,6 +363,7 @@ func FrameworkGraph() *Graph {
 		application      = "fireflyframework-starter-application"
 		backoffice       = "fireflyframework-backoffice"
 		observability    = "fireflyframework-observability"
+		agenticBridge    = "fireflyframework-agentic-bridge"
 	)
 
 	// ── Layer 0: root ──────────────────────────────────────────────────
@@ -510,6 +511,14 @@ func FrameworkGraph() *Graph {
 	g.AddEdge(notifResend, notifications)
 	g.AddEdge(notifSendgrid, notifications)
 	g.AddEdge(notifTwilio, notifications)
+
+	// ── agentic-bridge: Java bridge to the Python agentic SDK ────────
+	// (the parent fireflyframework-agentic repo is Python and is NOT in this DAG)
+	g.AddEdge(agenticBridge, parent)
+	g.AddEdge(agenticBridge, kernel)
+	g.AddEdge(agenticBridge, observability)
+	g.AddEdge(agenticBridge, web)
+	g.AddEdge(agenticBridge, cache)
 
 	return g
 }
