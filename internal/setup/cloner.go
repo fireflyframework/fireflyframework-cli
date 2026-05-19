@@ -49,6 +49,7 @@ var FrameworkRepos = []string{
 	"fireflyframework-ecm-storage-azure",
 	"fireflyframework-idp",
 	"fireflyframework-idp-aws-cognito",
+	"fireflyframework-idp-azure-ad",
 	"fireflyframework-idp-internal-db",
 	"fireflyframework-idp-keycloak",
 	"fireflyframework-notifications",
@@ -62,6 +63,7 @@ var FrameworkRepos = []string{
 	"fireflyframework-config-server",
 	"fireflyframework-starter-application",
 	"fireflyframework-backoffice",
+	"fireflyframework-agentic-bridge",
 }
 
 // CloneResult holds the result of a clone operation for a single repo.

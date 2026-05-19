@@ -425,17 +425,30 @@ func runReleaseStatus(cmd *cobra.Command, args []string) error {
 	defer cancel()
 	_ = ctx
 
+	tag := "v" + cfg.ParentVersion
 	for _, repo := range setup.FrameworkRepos {
 		if !isPartOfBuild(repo) {
 			continue
 		}
-		out, _ := runGH(filepath.Join(cfg.ReposPath, repo), "release", "list", "--limit", "1", "--json", "tagName", "-q", ".[0].tagName")
-		latest := strings.TrimSpace(out)
+		// Source of truth: does the tag exist? (releases lag the workflow)
+		tagOut, tagErr := runGH(filepath.Join(cfg.ReposPath, repo), "api",
+			"/repos/fireflyframework/"+repo+"/git/refs/tags/"+tag, "-q", ".object.sha")
+		hasTag := tagErr == nil && strings.TrimSpace(tagOut) != "" && !strings.Contains(tagOut, "Not Found")
+
+		// Release page (lags but signals workflow has fully finished)
+		relOut, _ := runGH(filepath.Join(cfg.ReposPath, repo), "release", "list", "--limit", "1", "--json", "tagName", "-q", ".[0].tagName")
+		latestRelease := strings.TrimSpace(relOut)
+
 		marker := "  "
-		if latest == "v"+cfg.ParentVersion {
+		state := latestRelease
+		switch {
+		case hasTag && latestRelease == tag:
 			marker = ui.StyleSuccess.Render("✓ ")
+		case hasTag:
+			marker = ui.StyleWarning.Render("⏳")
+			state = tag + " (tagged, publish in-progress)"
 		}
-		fmt.Printf("%s%-45s %s\n", marker, repo, latest)
+		fmt.Printf("%s%-45s %s\n", marker, repo, state)
 	}
 	return nil
 }
