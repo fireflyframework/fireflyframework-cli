@@ -391,7 +391,7 @@ Configuration is stored in `~/.flywork/config.yaml`.
 | `github_org` | `fireflyframework` | GitHub organization name |
 | `default_group_id` | `org.fireflyframework` | Default Maven groupId for new projects |
 | `java_version` | `25` | Target Java version for compilation |
-| `parent_version` | `26.02.07` | Parent POM CalVer version for archetypes |
+| `parent_version` | `26.05.06` | Parent POM CalVer version for archetypes |
 | `cli_auto_update` | `false` | Auto-check for CLI updates on launch |
 | `branch` | `develop` | Git branch to clone during setup |
 
