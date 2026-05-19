@@ -26,6 +26,7 @@ import (
 var FrameworkRepos = []string{
 	"fireflyframework-parent",
 	"fireflyframework-bom",
+	"fireflyframework-kernel",
 	"fireflyframework-utils",
 	"fireflyframework-validators",
 	"fireflyframework-plugins",
