@@ -36,18 +36,12 @@ var (
 )
 
 const banner = `
-  _____.__                _____.__                            
-_/ ____\__|______   _____/ ____\  | ___.__.                   
-\   __\|  \_  __ \_/ __ \   __\|  |<   |  |                   
- |  |  |  ||  | \/\  ___/|  |  |  |_\___  |                   
- |__|  |__||__|    \___  >__|  |____/ ____|                   
-                       \/           \/                        
-  _____                                                 __    
-_/ ____\___________    _____   ______  _  _____________|  | __
-\   __\\_  __ \__  \  /     \_/ __ \ \/ \/ /  _ \_  __ \  |/ /
- |  |   |  | \// __ \|  Y Y  \  ___/\     (  <_> )  | \/    < 
- |__|   |__|  (____  /__|_|  /\___  >\/\_/ \____/|__|  |__|_ \
-                   \/      \/     \/                        \/`
+   __ _              __ _         __                                            _
+  / _(_)_ __ ___    / _| |_   _  / _|_ __ __ _ _ __ ___   _____      _____  _ __| | __
+ | |_| | '__/ _ \  | |_| | | | || |_| '__/ ` + "`" + `_` + "`" + ` | '_ ` + "`" + ` _ \ / _ \ \ /\ / / _ \| '__| |/ /
+ |  _| | | |  __/  |  _| | |_| ||  _| | | (_| | | | | | |  __/\ V  V / (_) | |  |   <
+ |_| |_|_|  \___|  |_| |_|\__, ||_| |_|  \__,_|_| |_| |_|\___| \_/\_/ \___/|_|  |_|\_\
+                          |___/                                                       `
 
 // skipBanner lists command names (or parent+child) that should NOT print the banner.
 var skipBanner = map[string]bool{
@@ -95,6 +89,7 @@ Available Commands:
   run         Run a Firefly Framework application with configuration assistance
   dag         Inspect the framework dependency graph
   fwversion   Manage framework-wide CalVer versions
+  release     Orchestrate a full layer-by-layer framework release (push, PR, tag, publish)
   config      View and manage CLI configuration
   upgrade     Self-update the CLI binary from GitHub releases
   version     Print CLI version information
