@@ -583,9 +583,13 @@ func runReleasePublishMvnCentral(cmd *cobra.Command, args []string) error {
 			skipped++
 			continue
 		}
+		// workflow_dispatch must reference a branch (the workflow_dispatch trigger
+		// is only registered when the workflow exists on the default branch). The
+		// workflow itself reads project.version from the checked-out pom, which on
+		// main matches the version we want to publish.
 		args := []string{"workflow", "run", "maven-central.yml",
 			"--repo", "fireflyframework/" + repo,
-			"--ref", "v" + ver,
+			"--ref", "main",
 			"-f", fmt.Sprintf("wait-max-time=%d", mvnCentralWaitTime),
 		}
 		out, err := runGH("", args...)
