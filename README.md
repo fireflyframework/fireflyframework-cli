@@ -7,18 +7,18 @@
 [![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey)]()
 
 ```
-  _____.__ _____.__
-_/ ____\__|______ _____/ ____\ | ___.__.
-\ __\| \_ __ \_/ __ \ __\| |< | |
- | | | || | \/\ ___/| | | |_\___ |
- |__| |__||__| \___ >__| |____/ ____|
-                       \/ \/
-  _____ __
-_/ ____\___________ _____ ______ _ _____________| | __
-\ __\_ __ \__ \ / \_/ __ \ \/ \/ / _ \_ __ \ |/ /
- | | | | \// __ \| Y Y \ ___/\ ( <_> ) | \/ <
- |__| |__| (____ /__|_| /\___ >\/\_/ \____/|__| |__|_ \
-                   \/ \/ \/ \/
+  _____.__                _____.__
+_/ ____\__|______   _____/ ____\  | ___.__.
+\   __\|  \_  __ \_/ __ \   __\|  |<   |  |
+ |  |  |  ||  | \/\  ___/|  |  |  |_\___  |
+ |__|  |__||__|    \___  >__|  |____/ ____|
+                       \/           \/
+  _____                                                 __
+_/ ____\___________    _____   ______  _  _____________|  | __
+\   __\\_  __ \__  \  /     \_/ __ \ \/ \/ /  _ \_  __ \  |/ /
+ |  |   |  | \// __ \|  Y Y  \  ___/\     (  <_> )  | \/    <
+ |__|   |__|  (____  /__|_|  /\___  >\/\_/ \____/|__|  |__|_ \
+                   \/      \/     \/                        \/
 ```
 
 The official command-line interface for the **Firefly Framework** — scaffold, setup, diagnose, and manage your Firefly-based Java microservices with a world-class developer experience.
@@ -53,7 +53,7 @@ make install
 
 ### `flywork setup`
 
-Bootstraps the entire Firefly Framework into your local environment. Clones all **38 framework repositories** in **DAG-resolved dependency order** and installs them to your local Maven cache (`~/.m2`).
+Bootstraps the entire Firefly Framework into your local environment. Clones all **41 framework repositories** in **DAG-resolved dependency order** and installs them to your local Maven cache (`~/.m2`).
 
 The CLI resolves a dependency graph across all repositories, groups them into layers, and processes each layer sequentially to guarantee correct compilation order. Progress is shown with real-time progress bars, per-repo spinners with elapsed time, and a final summary box.
 
@@ -84,7 +84,7 @@ When `--skip-tests` is not provided, the CLI interactively asks whether to run t
 1. **Preflight** — Verifies Git, Maven, and Java are installed
 2. **Resume/Retry Detection** — Detects previous setup manifest and offers to resume, retry, or restart
 3. **JDK Selection** — Auto-detects installed JDK versions matching the configured `java_version`
-4. **Cloning** — Resolves the dependency DAG (38 repos across 6 layers) and clones all repos layer-by-layer
+4. **Cloning** — Resolves the dependency DAG (41 repos across 7 layers) and clones all repos layer-by-layer
 5. **Installing** — Runs `mvn clean install` on each repo in dependency order with per-repo spinners
 6. **Post-Install Retry** — If any repos fail, offers to retry them immediately
 7. Displays a summary box with total time, repos cloned/installed, and layer count
@@ -286,6 +286,67 @@ flywork fwversion families # show version family release history
 | `--dry-run` | `false` | Show changes without modifying files |
 | `--install` | `false` | Run `mvn install` in all repos after bumping |
 
+### `flywork release`
+
+Orchestrates an end-to-end framework release across every Java repo. Walks the dependency DAG layer-by-layer: pushes release branches, opens PRs with auto-merge, waits for CI, admin-merges on review-gate, tags `main` with `v<version>`, waits for the release workflow's GitHub Packages publish, then re-triggers CIs on the next layer so downstream PRs pick up newly-published artifacts.
+
+```bash
+flywork release                                Auto-compute next CalVer; orchestrate end-to-end
+flywork release --year 26 --month 5 --patch 8  Explicit target version
+flywork release --from-layer 3                 Resume cascade starting at layer 3
+flywork release --dry-run                      Print plan only, no changes
+flywork release --skip-prs                     Push directly to main (skip PR step, advanced)
+flywork release --repo X                       Limit to a single repo (still respects DAG order)
+```
+
+**Subcommands:**
+
+| Subcommand | Description |
+|------------|-------------|
+| `status` | Per-repo release state (✓ released, ⏳ tagged but publish in flight, blank for pending) |
+| `verify` | 3-column status: git tag / GitHub Packages / Maven Central — for any version via `--version` |
+| `publish-mvn-central` | Trigger Maven Central publish workflow (`workflow_dispatch`) for repos missing from Central — retries Sonatype Portal polling timeouts without re-tagging |
+
+**Cascade flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--year` / `--month` / `--patch` | auto | Explicit CalVer parts (otherwise next patch is computed) |
+| `--dry-run` | `false` | Print plan without making changes |
+| `--skip-prs` | `false` | Push directly to main (skip PR step) |
+| `--skip-tag` | `false` | Do not tag main (skip release trigger) |
+| `--from-layer` | `0` | Resume cascade starting at this DAG layer (0-indexed) |
+| `--admin` | `true` | Use `--admin` to bypass branch protection / required reviews |
+| `--timeout-minutes` | `30` | Per-layer timeout in minutes for the github-packages wait |
+| `--repo` | `""` | Limit to a single repo (still respects DAG order) |
+
+**verify flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--version` | config | Version to verify (defaults to `config.parent_version`) |
+
+**publish-mvn-central flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--version` | config | Version to publish |
+| `--repo` | `""` | Limit to a single repo |
+| `--wait-seconds` | `3600` | Sonatype Central polling wait time (seconds) — Portal validation can take 20–40 min |
+
+**Maven Central architecture:**
+
+Maven Central publishing is decoupled from the main release workflow (in `fireflyframework/.github/.github/workflows/`). Each repo has two workflows:
+
+- `release.yml` → calls reusable `java-release.yml` → GH Packages publish + GitHub Release page (fast, deterministic, completes in ~90s)
+- `maven-central.yml` → calls reusable `java-publish-maven-central.yml` → Sonatype Portal publish (slow, up to 60 min; can be retried via `workflow_dispatch` without re-tagging)
+
+This means a slow Sonatype validation no longer blocks the fast GitHub Packages publish or the Release page creation. Retry independently via:
+
+```bash
+flywork release publish-mvn-central --version 26.05.07 --repo fireflyframework-plugins
+```
+
 ### `flywork run`
 
 Runs a Firefly Framework application with interactive configuration assistance. Detects the Spring Boot module, scans configuration files for missing environment variables, and launches an interactive wizard before starting the app.
@@ -362,7 +423,7 @@ The `--verbose` flag is available on all commands. It enables additional output 
 
 ## DAG Dependency Resolution
 
-The CLI maintains an internal **directed acyclic graph** of all 38 framework repositories with their real Maven dependency relationships. This ensures:
+The CLI maintains an internal **directed acyclic graph** of all 41 framework repositories with their real Maven dependency relationships. This ensures:
 
 - **Correct build order** — repositories are always compiled after their dependencies
 - **Layer grouping** — independent repos are grouped into layers for potential parallelization
@@ -529,6 +590,7 @@ fireflyframework-cli/
 │ ├── publish.go # flywork publish (GitHub Packages deploy)
 │ ├── dag.go # flywork dag (graph inspection)
 │ ├── fwversion.go # flywork fwversion (CalVer management)
+│ ├── release.go # flywork release (DAG-ordered cascade + verify + publish-mvn-central)
 │ ├── upgrade.go # flywork upgrade (self-update)
 │ ├── config.go # flywork config (get/set/reset)
 │ ├── run.go # flywork run (application runner)
