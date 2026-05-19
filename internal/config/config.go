@@ -123,7 +123,7 @@ func DefaultConfig() *Config {
 		GithubOrg:     "fireflyframework",
 		DefaultGroup:  "org.fireflyframework",
 		JavaVersion:   "25",
-		ParentVersion: "26.05.06",
+		ParentVersion: "26.05.07",
 		Branch:        "develop",
 	}
 }
