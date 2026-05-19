@@ -453,6 +453,158 @@ func runReleaseStatus(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// ── flywork release verify ──────────────────────────────────────────────────
+// 3-column status: git tag / GH Packages / Maven Central — for a target version.
+
+var verifyVersion string
+
+var releaseVerifyCmd = &cobra.Command{
+	Use:   "verify",
+	Short: "Verify a released version across git tags, GitHub Packages, and Maven Central",
+	RunE:  runReleaseVerify,
+}
+
+func runReleaseVerify(cmd *cobra.Command, args []string) error {
+	p := ui.NewPrinter()
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	ver := verifyVersion
+	if ver == "" {
+		ver = cfg.ParentVersion
+	}
+	tag := "v" + ver
+
+	p.Header("Release verification @ " + ver)
+	p.Newline()
+	fmt.Printf("  %-50s %-12s %-12s %-12s\n", "Repo", "Tag", "GH Pkgs", "Mvn Central")
+	fmt.Println("  " + strings.Repeat("─", 92))
+
+	var tagOK, ghOK, mcOK int
+	for _, repo := range setup.FrameworkRepos {
+		if !isPartOfBuild(repo) {
+			continue
+		}
+		tagMark := mark(checkTagExists(repo, tag))
+		ghMark := mark(checkGHPackagesHas(repo, ver))
+		mcMark := mark(checkMavenCentralHas(repo, ver))
+		if tagMark == "✓" {
+			tagOK++
+		}
+		if ghMark == "✓" {
+			ghOK++
+		}
+		if mcMark == "✓" {
+			mcOK++
+		}
+		fmt.Printf("  %-50s %-12s %-12s %-12s\n", repo, tagMark, ghMark, mcMark)
+	}
+	fmt.Println("  " + strings.Repeat("─", 92))
+	fmt.Printf("  %-50s %d/%-9d %d/%-9d %d/%-9d\n", "Total", tagOK, len(setup.FrameworkRepos), ghOK, len(setup.FrameworkRepos), mcOK, len(setup.FrameworkRepos))
+	return nil
+}
+
+func mark(ok bool) string {
+	if ok {
+		return ui.StyleSuccess.Render("✓")
+	}
+	return "·"
+}
+
+func checkTagExists(repo, tag string) bool {
+	out, err := runGH("", "api", "/repos/fireflyframework/"+repo+"/git/refs/tags/"+tag, "-q", ".object.sha")
+	if err != nil {
+		return false
+	}
+	s := strings.TrimSpace(out)
+	return s != "" && !strings.Contains(out, "Not Found")
+}
+
+func checkGHPackagesHas(repo, version string) bool {
+	out, err := runGH("", "api",
+		"/orgs/fireflyframework/packages/maven/org.fireflyframework."+repo+"/versions",
+		"-q", ".[] | select(.name==\""+version+"\") | .name")
+	if err != nil {
+		return false
+	}
+	return strings.TrimSpace(out) == version
+}
+
+func checkMavenCentralHas(repo, version string) bool {
+	// Public Maven Central search API — does not require auth
+	cmd := exec.Command("curl", "-sf", "-o", "/dev/null", "-w", "%{http_code}",
+		"https://repo.maven.apache.org/maven2/org/fireflyframework/"+repo+"/"+version+"/"+repo+"-"+version+".pom")
+	out, _ := cmd.Output()
+	return strings.TrimSpace(string(out)) == "200"
+}
+
+// ── flywork release publish-mvn-central ─────────────────────────────────────
+// Triggers the per-repo maven-central.yml workflow via workflow_dispatch.
+// Useful when Sonatype polling timed out and the deploy bundle was uploaded
+// but not validated — retrying is enough since the bundle is already there.
+
+var mvnCentralVersion string
+var mvnCentralRepoOverride string
+var mvnCentralWaitTime int
+
+var releaseMvnCentralCmd = &cobra.Command{
+	Use:   "publish-mvn-central",
+	Short: "Trigger Maven Central publish workflow (workflow_dispatch) for repos missing on Central",
+	RunE:  runReleasePublishMvnCentral,
+}
+
+func runReleasePublishMvnCentral(cmd *cobra.Command, args []string) error {
+	p := ui.NewPrinter()
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	ver := mvnCentralVersion
+	if ver == "" {
+		ver = cfg.ParentVersion
+	}
+
+	p.Header("Maven Central publish @ " + ver)
+	p.Newline()
+
+	repos := setup.FrameworkRepos
+	if mvnCentralRepoOverride != "" {
+		repos = []string{mvnCentralRepoOverride}
+	}
+
+	dispatched, skipped, failed := 0, 0, 0
+	for _, repo := range repos {
+		if !isPartOfBuild(repo) {
+			continue
+		}
+		if checkMavenCentralHas(repo, ver) {
+			p.Info(fmt.Sprintf("%-50s already on Maven Central", repo))
+			skipped++
+			continue
+		}
+		args := []string{"workflow", "run", "maven-central.yml",
+			"--repo", "fireflyframework/" + repo,
+			"--ref", "v" + ver,
+			"-f", fmt.Sprintf("wait-max-time=%d", mvnCentralWaitTime),
+		}
+		out, err := runGH("", args...)
+		if err != nil {
+			p.Warning(fmt.Sprintf("%-50s dispatch failed: %s", repo, strings.TrimSpace(out)))
+			failed++
+			continue
+		}
+		p.Success(fmt.Sprintf("%-50s dispatched", repo))
+		dispatched++
+	}
+	p.SummaryBox("publish-mvn-central", []string{
+		fmt.Sprintf("Dispatched   %d", dispatched),
+		fmt.Sprintf("Already on   %d", skipped),
+		fmt.Sprintf("Failed       %d", failed),
+	})
+	return nil
+}
+
 // ── init ─────────────────────────────────────────────────────────────────────
 
 func init() {
@@ -467,6 +619,14 @@ func init() {
 	releaseCmd.Flags().IntVar(&releasePerRepoTimeout, "timeout-minutes", 30, "Per-layer timeout in minutes for the github-packages wait")
 	releaseCmd.Flags().StringVar(&releaseRepoOverride, "repo", "", "Limit to a single repo (still respects DAG order)")
 
+	releaseVerifyCmd.Flags().StringVar(&verifyVersion, "version", "", "Version to verify (defaults to config.ParentVersion)")
+
+	releaseMvnCentralCmd.Flags().StringVar(&mvnCentralVersion, "version", "", "Version to publish (defaults to config.ParentVersion)")
+	releaseMvnCentralCmd.Flags().StringVar(&mvnCentralRepoOverride, "repo", "", "Limit to a single repo")
+	releaseMvnCentralCmd.Flags().IntVar(&mvnCentralWaitTime, "wait-seconds", 3600, "Sonatype Central polling wait time (seconds)")
+
 	releaseCmd.AddCommand(releaseStatusCmd)
+	releaseCmd.AddCommand(releaseVerifyCmd)
+	releaseCmd.AddCommand(releaseMvnCentralCmd)
 	rootCmd.AddCommand(releaseCmd)
 }
