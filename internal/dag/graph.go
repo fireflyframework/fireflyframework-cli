@@ -414,6 +414,7 @@ func FrameworkGraph() *Graph {
 	g.AddEdge(orchestration, cache)
 	g.AddEdge(orchestration, eda)
 	g.AddEdge(orchestration, observability)
+	g.AddEdge(orchestration, eventsourcing)
 
 	// ECM implementation modules
 	g.AddEdge(ecmEsigAdobe, ecm)
