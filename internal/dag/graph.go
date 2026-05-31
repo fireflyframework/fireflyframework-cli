@@ -330,8 +330,15 @@ func FrameworkGraph() *Graph {
 		validators       = "fireflyframework-validators"
 		plugins          = "fireflyframework-plugins"
 		cache            = "fireflyframework-cache"
+		cacheRedis       = "fireflyframework-cache-redis"
+		cacheHazelcast   = "fireflyframework-cache-hazelcast"
+		cacheJCache      = "fireflyframework-cache-jcache"
+		cachePostgres    = "fireflyframework-cache-postgres"
 		r2dbc            = "fireflyframework-r2dbc"
 		eda              = "fireflyframework-eda"
+		edaKafka         = "fireflyframework-eda-kafka"
+		edaRabbitMQ      = "fireflyframework-eda-rabbitmq"
+		edaPostgres      = "fireflyframework-eda-postgres"
 		cqrs             = "fireflyframework-cqrs"
 		eventsourcing    = "fireflyframework-eventsourcing"
 		orchestration    = "fireflyframework-orchestration"
@@ -427,6 +434,17 @@ func FrameworkGraph() *Graph {
 	g.AddEdge(idpCognito, idp)
 	g.AddEdge(idpKeycloak, idp)
 	g.AddEdge(idpAzureAD, idp)
+
+	// Cache implementation modules
+	g.AddEdge(cacheRedis, cache)
+	g.AddEdge(cacheHazelcast, cache)
+	g.AddEdge(cacheJCache, cache)
+	g.AddEdge(cachePostgres, cache)
+
+	// EDA implementation modules
+	g.AddEdge(edaKafka, eda)
+	g.AddEdge(edaRabbitMQ, eda)
+	g.AddEdge(edaPostgres, eda)
 
 	// ── Layer 3: modules with deeper dependencies ─────────────────────
 
