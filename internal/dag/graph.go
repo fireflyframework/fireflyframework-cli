@@ -539,5 +539,21 @@ func FrameworkGraph() *Graph {
 	g.AddEdge(agenticBridge, web)
 	g.AddEdge(agenticBridge, cache)
 
+	// --- Dependency edges reconciled against actual pom.xml deps (fixes layering bugs) ---
+	// observability consumers that were missing the explicit edge
+	g.AddEdge(configServer, observability) // config-server depends on observability (was same-layer race)
+	g.AddEdge(plugins, observability)
+	g.AddEdge(idp, observability)
+	g.AddEdge(cache, observability)
+	g.AddEdge(r2dbc, observability)
+	// starter-application depends on orchestration (must publish after it)
+	g.AddEdge(application, orchestration)
+	// reverse-dep wiring to the extracted cache/eda adapters
+	g.AddEdge(webhooks, edaKafka)
+	g.AddEdge(webhooks, cacheRedis)
+	g.AddEdge(callbacks, edaKafka)
+	// notifications-resend uses the client module
+	g.AddEdge(notifResend, client)
+
 	return g
 }
