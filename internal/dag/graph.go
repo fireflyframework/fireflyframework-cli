@@ -23,10 +23,10 @@ import (
 
 // Graph represents a directed acyclic graph for dependency resolution.
 type Graph struct {
-	nodes    map[string]bool
-	edges    map[string]map[string]bool // edges[A][B] = true means A depends on B
-	reverse  map[string]map[string]bool // reverse[B][A] = true means B is depended upon by A
-	ordered  []string                   // insertion order for deterministic output
+	nodes   map[string]bool
+	edges   map[string]map[string]bool // edges[A][B] = true means A depends on B
+	reverse map[string]map[string]bool // reverse[B][A] = true means B is depended upon by A
+	ordered []string                   // insertion order for deterministic output
 }
 
 // New creates an empty graph.
@@ -240,8 +240,8 @@ func (g *Graph) Subgraph(nodes map[string]bool) *Graph {
 
 // dagJSON is the serialization format for ExportJSON.
 type dagJSON struct {
-	Layers [][]string            `json:"layers"`
-	Edges  map[string][]string   `json:"edges"`
+	Layers [][]string          `json:"layers"`
+	Edges  map[string][]string `json:"edges"`
 }
 
 // ExportJSON exports the graph as JSON with layers and edges.
@@ -323,54 +323,69 @@ func FrameworkGraph() *Graph {
 
 	// Aliases for readability
 	const (
-		parent           = "fireflyframework-parent"
-		bom              = "fireflyframework-bom"
-		kernel           = "fireflyframework-kernel"
-		utils            = "fireflyframework-utils"
-		validators       = "fireflyframework-validators"
-		plugins          = "fireflyframework-plugins"
-		cache            = "fireflyframework-cache"
-		cacheRedis       = "fireflyframework-cache-redis"
-		cacheHazelcast   = "fireflyframework-cache-hazelcast"
-		cacheJCache      = "fireflyframework-cache-jcache"
-		cachePostgres    = "fireflyframework-cache-postgres"
-		r2dbc            = "fireflyframework-r2dbc"
-		eda              = "fireflyframework-eda"
-		edaKafka         = "fireflyframework-eda-kafka"
-		edaRabbitMQ      = "fireflyframework-eda-rabbitmq"
-		edaPostgres      = "fireflyframework-eda-postgres"
-		cqrs             = "fireflyframework-cqrs"
-		eventsourcing    = "fireflyframework-eventsourcing"
-		orchestration    = "fireflyframework-orchestration"
-		client           = "fireflyframework-client"
-		web              = "fireflyframework-web"
-		core             = "fireflyframework-starter-core"
-		domain           = "fireflyframework-starter-domain"
-		data             = "fireflyframework-starter-data"
-		ecm              = "fireflyframework-ecm"
-		ecmEsigAdobe     = "fireflyframework-ecm-esignature-adobe-sign"
-		ecmEsigDocusign  = "fireflyframework-ecm-esignature-docusign"
-		ecmEsigLogalty   = "fireflyframework-ecm-esignature-logalty"
-		ecmStorageAWS    = "fireflyframework-ecm-storage-aws"
-		ecmStorageAzure  = "fireflyframework-ecm-storage-azure"
-		idp              = "fireflyframework-idp"
-		idpCognito       = "fireflyframework-idp-aws-cognito"
-		idpInternalDB    = "fireflyframework-idp-internal-db"
-		idpKeycloak      = "fireflyframework-idp-keycloak"
-		idpAzureAD       = "fireflyframework-idp-azure-ad"
-		notifications    = "fireflyframework-notifications"
-		notifFirebase    = "fireflyframework-notifications-firebase"
-		notifResend      = "fireflyframework-notifications-resend"
-		notifSendgrid    = "fireflyframework-notifications-sendgrid"
-		notifTwilio      = "fireflyframework-notifications-twilio"
-		ruleEngine       = "fireflyframework-rule-engine"
-		webhooks         = "fireflyframework-webhooks"
-		callbacks        = "fireflyframework-callbacks"
-		configServer     = "fireflyframework-config-server"
-		application      = "fireflyframework-starter-application"
-		backoffice       = "fireflyframework-backoffice"
-		observability    = "fireflyframework-observability"
-		agenticBridge    = "fireflyframework-agentic-bridge"
+		parent          = "fireflyframework-parent"
+		bom             = "fireflyframework-bom"
+		kernel          = "fireflyframework-kernel"
+		utils           = "fireflyframework-utils"
+		validators      = "fireflyframework-validators"
+		plugins         = "fireflyframework-plugins"
+		cache           = "fireflyframework-cache"
+		cacheRedis      = "fireflyframework-cache-redis"
+		cacheHazelcast  = "fireflyframework-cache-hazelcast"
+		cacheJCache     = "fireflyframework-cache-jcache"
+		cachePostgres   = "fireflyframework-cache-postgres"
+		r2dbc           = "fireflyframework-r2dbc"
+		eda             = "fireflyframework-eda"
+		edaKafka        = "fireflyframework-eda-kafka"
+		edaRabbitMQ     = "fireflyframework-eda-rabbitmq"
+		edaPostgres     = "fireflyframework-eda-postgres"
+		cqrs            = "fireflyframework-cqrs"
+		eventsourcing   = "fireflyframework-eventsourcing"
+		orchestration   = "fireflyframework-orchestration"
+		client          = "fireflyframework-client"
+		web             = "fireflyframework-web"
+		core            = "fireflyframework-starter-core"
+		domain          = "fireflyframework-starter-domain"
+		data            = "fireflyframework-starter-data"
+		ecm             = "fireflyframework-ecm"
+		ecmEsigAdobe    = "fireflyframework-ecm-esignature-adobe-sign"
+		ecmEsigDocusign = "fireflyframework-ecm-esignature-docusign"
+		ecmEsigLogalty  = "fireflyframework-ecm-esignature-logalty"
+		ecmStorageAWS   = "fireflyframework-ecm-storage-aws"
+		ecmStorageAzure = "fireflyframework-ecm-storage-azure"
+		idp             = "fireflyframework-security-idp"
+		idpCognito      = "fireflyframework-security-idp-aws-cognito"
+		idpInternalDB   = "fireflyframework-security-idp-internal-db"
+		idpKeycloak     = "fireflyframework-security-idp-keycloak"
+		idpAzureAD      = "fireflyframework-security-idp-azure-ad"
+		// Security platform — hexagon core + delivery modules + SPI adapters
+		secApi            = "fireflyframework-security-api"
+		secSpi            = "fireflyframework-security-spi"
+		secCore           = "fireflyframework-security-core"
+		secWebflux        = "fireflyframework-security-webflux"
+		secResource       = "fireflyframework-security-resource-server"
+		secMethod         = "fireflyframework-security-method-policy"
+		secOauth2         = "fireflyframework-security-oauth2-client"
+		secAuthz          = "fireflyframework-security-authorization-server"
+		secTest           = "fireflyframework-security-test"
+		secAdapterOpa     = "fireflyframework-security-adapter-opa"
+		secAdapterCerbos  = "fireflyframework-security-adapter-cerbos"
+		secAdapterOpenfga = "fireflyframework-security-adapter-openfga"
+		secAdapterVault   = "fireflyframework-security-adapter-vault"
+		secAdapterR2dbc   = "fireflyframework-security-adapter-r2dbc"
+		notifications     = "fireflyframework-notifications"
+		notifFirebase     = "fireflyframework-notifications-firebase"
+		notifResend       = "fireflyframework-notifications-resend"
+		notifSendgrid     = "fireflyframework-notifications-sendgrid"
+		notifTwilio       = "fireflyframework-notifications-twilio"
+		ruleEngine        = "fireflyframework-rule-engine"
+		webhooks          = "fireflyframework-webhooks"
+		callbacks         = "fireflyframework-callbacks"
+		configServer      = "fireflyframework-config-server"
+		application       = "fireflyframework-starter-application"
+		backoffice        = "fireflyframework-backoffice"
+		observability     = "fireflyframework-observability"
+		agenticBridge     = "fireflyframework-agentic-bridge"
 	)
 
 	// ── Layer 0: root ──────────────────────────────────────────────────
@@ -554,6 +569,35 @@ func FrameworkGraph() *Graph {
 	g.AddEdge(callbacks, edaKafka)
 	// notifications-resend uses the client module
 	g.AddEdge(notifResend, client)
+
+	// ── Security platform — hexagon, wired from actual pom.xml deps ────
+	// Core hexagon: api ← spi ← core ← webflux ← delivery
+	g.AddEdge(secApi, parent)
+	g.AddEdge(secApi, kernel)
+	g.AddEdge(secSpi, secApi)
+	g.AddEdge(secCore, secApi)
+	g.AddEdge(secCore, secSpi)
+	g.AddEdge(secWebflux, secApi)
+	g.AddEdge(secWebflux, secCore)
+	// Delivery modules
+	g.AddEdge(secResource, secWebflux)
+	g.AddEdge(secMethod, secCore)
+	g.AddEdge(secMethod, secWebflux)
+	g.AddEdge(secAuthz, secCore)
+	g.AddEdge(secAuthz, secSpi)
+	g.AddEdge(secOauth2, parent) // no internal fireflyframework deps (Spring-only)
+	g.AddEdge(secTest, secApi)
+	g.AddEdge(secTest, secSpi)
+	g.AddEdge(secTest, secWebflux)
+	// SPI adapters depend only on api + spi
+	for _, ad := range []string{secAdapterOpa, secAdapterCerbos, secAdapterOpenfga, secAdapterVault, secAdapterR2dbc} {
+		g.AddEdge(ad, secApi)
+		g.AddEdge(ad, secSpi)
+	}
+	// (security-idp base already depends on kernel via the kernel loop and observability via the reconcile block)
+	// The application starter is locked down by the resource server + reactive method policy
+	g.AddEdge(application, secResource)
+	g.AddEdge(application, secMethod)
 
 	return g
 }
