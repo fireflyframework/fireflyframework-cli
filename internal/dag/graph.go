@@ -366,6 +366,7 @@ func FrameworkGraph() *Graph {
 		secResource       = "fireflyframework-security-resource-server"
 		secMethod         = "fireflyframework-security-method-policy"
 		secOauth2         = "fireflyframework-security-oauth2-client"
+		secBff            = "fireflyframework-security-bff"
 		secAuthz          = "fireflyframework-security-authorization-server"
 		secTest           = "fireflyframework-security-test"
 		secAdapterOpa     = "fireflyframework-security-adapter-opa"
@@ -586,6 +587,7 @@ func FrameworkGraph() *Graph {
 	g.AddEdge(secAuthz, secCore)
 	g.AddEdge(secAuthz, secSpi)
 	g.AddEdge(secOauth2, parent) // no internal fireflyframework deps (Spring-only)
+	g.AddEdge(secBff, parent)    // token-handler BFF chain; no internal fireflyframework deps (Spring-only)
 	g.AddEdge(secTest, secApi)
 	g.AddEdge(secTest, secSpi)
 	g.AddEdge(secTest, secWebflux)

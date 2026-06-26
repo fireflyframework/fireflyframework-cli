@@ -62,6 +62,7 @@ var FrameworkRepos = []string{
 	"fireflyframework-security-resource-server",
 	"fireflyframework-security-method-policy",
 	"fireflyframework-security-oauth2-client",
+	"fireflyframework-security-bff",
 	"fireflyframework-security-authorization-server",
 	"fireflyframework-security-test",
 	"fireflyframework-security-adapter-opa",
