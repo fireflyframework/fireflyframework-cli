@@ -2,6 +2,7 @@
 # Usage:
 #   irm https://raw.githubusercontent.com/fireflyframework/fireflyframework-cli/main/install.ps1 | iex
 #   $env:FLYWORK_VERSION = "v26.02.03"; .\install.ps1
+#   $env:FLYWORK_NO_MODIFY_PATH = "1" # never change persistent user PATH
 
 $ErrorActionPreference = "Stop"
 
@@ -95,7 +96,7 @@ Write-Ok "Installed $Binary.exe to $InstallDir"
 # ── Update PATH ──────────────────────────────────────────────────────────────
 
 $UserPath = [System.Environment]::GetEnvironmentVariable("Path", "User")
-if ($UserPath -notlike "*$InstallDir*") {
+if ($env:FLYWORK_NO_MODIFY_PATH -ne "1" -and $UserPath -notlike "*$InstallDir*") {
     $NewPath = "$InstallDir;$UserPath"
     [System.Environment]::SetEnvironmentVariable("Path", $NewPath, "User")
     $env:Path = "$InstallDir;$env:Path"

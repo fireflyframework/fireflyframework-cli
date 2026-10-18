@@ -26,3 +26,10 @@ jobs:
     with:
       go-version: '1.25'
     secrets: inherit
+
+  installer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify installer isolation
+        run: python3 -m unittest discover -s tests

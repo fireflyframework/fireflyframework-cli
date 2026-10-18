@@ -34,13 +34,13 @@ import (
 
 // PomXML minimal struct for parsing pom.xml.
 type PomXML struct {
-	XMLName    xml.Name    `xml:"project"`
-	Parent     PomParent   `xml:"parent"`
-	GroupID    string      `xml:"groupId"`
-	ArtifactID string      `xml:"artifactId"`
-	Packaging  string      `xml:"packaging"`
-	Modules    PomModules  `xml:"modules"`
-	Deps       PomDeps     `xml:"dependencies"`
+	XMLName    xml.Name   `xml:"project"`
+	Parent     PomParent  `xml:"parent"`
+	GroupID    string     `xml:"groupId"`
+	ArtifactID string     `xml:"artifactId"`
+	Packaging  string     `xml:"packaging"`
+	Modules    PomModules `xml:"modules"`
+	Deps       PomDeps    `xml:"dependencies"`
 }
 
 type PomParent struct {
@@ -74,8 +74,8 @@ func RunGlobal(cfg *config.Config) []ui.CheckResult {
 	results = append(results, checkDocker())
 	results = append(results, checkFlyworkConfig())
 	results = append(results, checkReposCloned(cfg))
-	results = append(results, checkParentPOM())
-	results = append(results, checkBOM())
+	results = append(results, checkParentPOM(cfg))
+	results = append(results, checkBOM(cfg))
 	results = append(results, checkSetupManifest())
 	return results
 }
@@ -115,12 +115,12 @@ func checkEnvironment() ui.CheckResult {
 }
 
 // MinJavaVersion is the absolute minimum Java version the framework supports.
-const MinJavaVersion = 21
+const MinJavaVersion = 25
 
 func checkJava(cfg *config.Config) ui.CheckResult {
-	defaultVer := 25
+	defaultVer := MinJavaVersion
 	if cfg != nil && cfg.JavaVersion != "" {
-		if v, err := strconv.Atoi(cfg.JavaVersion); err == nil {
+		if v, err := strconv.Atoi(cfg.JavaVersion); err == nil && v >= MinJavaVersion {
 			defaultVer = v
 		}
 	}
@@ -150,13 +150,15 @@ func checkJavaHome(cfg *config.Config) ui.CheckResult {
 	javaHome := os.Getenv("JAVA_HOME")
 	if javaHome == "" {
 		// Try configured version first, then fall back to minimum
-		ver := "25"
+		ver := strconv.Itoa(MinJavaVersion)
 		if cfg != nil && cfg.JavaVersion != "" {
-			ver = cfg.JavaVersion
+			if v, err := strconv.Atoi(cfg.JavaVersion); err == nil && v >= MinJavaVersion {
+				ver = cfg.JavaVersion
+			}
 		}
 		detected, err := java.DetectJavaHome(ver)
 		if err != nil {
-			// Fall back: try to find any 21+ JDK
+			// Fall back to the framework minimum.
 			detected, err = java.DetectJavaHome(strconv.Itoa(MinJavaVersion))
 		}
 		if err != nil {
@@ -172,19 +174,17 @@ func checkMavenJava() ui.CheckResult {
 	if err != nil {
 		return ui.CheckResult{Name: "Maven→Java", Status: "warn", Detail: "mvn not found"}
 	}
-	// Extract "Java version: X.Y.Z" from mvn --version output
-	re := regexp.MustCompile(`Java version: (\d+)`)
+	// Maven can use a different JDK from java on PATH.
+	re := regexp.MustCompile(`(?i)(?:Java version: |java version ")(\d+)`)
 	matches := re.FindStringSubmatch(string(out))
 	if len(matches) >= 2 {
-		return ui.CheckResult{Name: "Maven→Java", Status: "pass", Detail: fmt.Sprintf("Java %s", matches[1])}
+		major, _ := strconv.Atoi(matches[1])
+		if major < MinJavaVersion {
+			return ui.CheckResult{Name: "Maven→Java", Status: "fail", Detail: fmt.Sprintf("Java %d (need %d+)", major, MinJavaVersion)}
+		}
+		return ui.CheckResult{Name: "Maven→Java", Status: "pass", Detail: fmt.Sprintf("Java %d", major)}
 	}
-	// Also try "runtime" line
-	re2 := regexp.MustCompile(`java version "(\d+)`)
-	matches2 := re2.FindStringSubmatch(string(out))
-	if len(matches2) >= 2 {
-		return ui.CheckResult{Name: "Maven→Java", Status: "pass", Detail: fmt.Sprintf("Java %s", matches2[1])}
-	}
-	return ui.CheckResult{Name: "Maven→Java", Status: "pass", Detail: "version detected"}
+	return ui.CheckResult{Name: "Maven→Java", Status: "warn", Detail: "could not parse Java version"}
 }
 
 func checkReposCloned(cfg *config.Config) ui.CheckResult {
@@ -277,18 +277,26 @@ func checkSetupManifest() ui.CheckResult {
 	return ui.CheckResult{Name: "Setup manifest", Status: "warn", Detail: detail}
 }
 
-func checkParentPOM() ui.CheckResult {
-	if maven.ArtifactExistsInM2("org.fireflyframework", "fireflyframework-parent", "1.0.0-SNAPSHOT") {
-		return ui.CheckResult{Name: "Parent POM in .m2", Status: "pass"}
+func checkParentPOM(cfg *config.Config) ui.CheckResult {
+	version := config.DefaultConfig().ParentVersion
+	if cfg != nil && cfg.ParentVersion != "" {
+		version = cfg.ParentVersion
 	}
-	return ui.CheckResult{Name: "Parent POM in .m2", Status: "fail", Detail: "run 'flywork setup' to install"}
+	if maven.ArtifactExistsInM2("org.fireflyframework", "fireflyframework-parent", version) {
+		return ui.CheckResult{Name: "Parent POM in .m2", Status: "pass", Detail: version}
+	}
+	return ui.CheckResult{Name: "Parent POM in .m2", Status: "fail", Detail: version + ": run 'flywork setup' to install"}
 }
 
-func checkBOM() ui.CheckResult {
-	if maven.ArtifactExistsInM2("org.fireflyframework", "fireflyframework-bom", "1.0.0-SNAPSHOT") {
-		return ui.CheckResult{Name: "BOM in .m2", Status: "pass"}
+func checkBOM(cfg *config.Config) ui.CheckResult {
+	version := config.DefaultConfig().ParentVersion
+	if cfg != nil && cfg.ParentVersion != "" {
+		version = cfg.ParentVersion
 	}
-	return ui.CheckResult{Name: "BOM in .m2", Status: "fail", Detail: "run 'flywork setup' to install"}
+	if maven.ArtifactExistsInM2("org.fireflyframework", "fireflyframework-bom", version) {
+		return ui.CheckResult{Name: "BOM in .m2", Status: "pass", Detail: version}
+	}
+	return ui.CheckResult{Name: "BOM in .m2", Status: "fail", Detail: version + ": run 'flywork setup' to install"}
 }
 
 func parsePom(path string) (*PomXML, error) {
@@ -400,7 +408,7 @@ func checkApplicationYaml(dir string, pom *PomXML, err error) ui.CheckResult {
 	}
 
 	for _, d := range searchDirs {
-	for _, name := range []string{"application.yaml", "application.yml", "application.properties"} {
+		for _, name := range []string{"application.yaml", "application.yml", "application.properties"} {
 			path := filepath.Join(d, "src", "main", "resources", name)
 			if _, serr := os.Stat(path); serr == nil {
 				return ui.CheckResult{Name: "application.yaml", Status: "pass", Detail: name}

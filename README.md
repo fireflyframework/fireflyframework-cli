@@ -21,11 +21,11 @@ _/ ____\___________    _____   ______  _  _____________|  | __
                    \/      \/     \/                        \/
 ```
 
-The official command-line interface for the **Firefly Framework** — scaffold, setup, diagnose, and manage your Firefly-based Java microservices with a world-class developer experience.
+Use `flywork` to install Jafly, create Java services, check your development environment, and manage the framework release train.
 
 ---
 
-## Quick Install
+## Install
 
 ### macOS / Linux
 
@@ -39,7 +39,7 @@ curl -fsSL https://raw.githubusercontent.com/fireflyframework/fireflyframework-c
 irm https://raw.githubusercontent.com/fireflyframework/fireflyframework-cli/main/install.ps1 | iex
 ```
 
-### From Source
+### From source
 
 ```bash
 git clone https://github.com/fireflyframework/fireflyframework-cli.git
@@ -49,13 +49,15 @@ make install
 
 ---
 
+For an isolated Unix installation, set `FLYWORK_VERSION`, `FLYWORK_INSTALL_DIR` and `FLYWORK_NO_MODIFY_PATH=1` when running the installer. The last option prevents persistent shell-profile edits; PowerShell supports the same opt-out for persistent user PATH changes. The installer still verifies the binary in the chosen directory.
+
 ## Commands
 
 ### `flywork setup`
 
-Bootstraps the entire Firefly Framework into your local environment. Clones all **41 framework repositories** in **DAG-resolved dependency order** and installs them to your local Maven cache (`~/.m2`).
+Clones the [Jafly monorepo](https://github.com/fireflyframework/fireflyframework-jafly) into `repos_path/fireflyframework-jafly` and installs its complete Maven reactor to your local cache (`~/.m2`). Maven resolves dependencies between modules inside that checkout. Existing legacy Java checkouts remain in place.
 
-The CLI resolves a dependency graph across all repositories, groups them into layers, and processes each layer sequentially to guarantee correct compilation order. Progress is shown with real-time progress bars, per-repo spinners with elapsed time, and a final summary box.
+Setup keeps its own `setup-manifest-jafly.json`, preserving old setup state. After successful installation, it saves the installed parent version for subsequent scaffolds. Java 25 and Maven 3.9+ are required; version/release tools also require Python 3.
 
 ```bash
 flywork setup # full interactive setup (prompts whether to run tests)
@@ -79,14 +81,14 @@ When `--skip-tests` is not provided, the CLI interactively asks whether to run t
 | `--fetch-updates` | `false` | Fetch latest changes for already-cloned repos |
 | `--jdk` | `""` | Explicit JAVA_HOME path (skip JDK auto-detection) |
 
-**What it does:**
+Setup proceeds as follows:
 
-1. **Preflight** — Verifies Git, Maven, and Java are installed
-2. **Resume/Retry Detection** — Detects previous setup manifest and offers to resume, retry, or restart
-3. **JDK Selection** — Auto-detects installed JDK versions matching the configured `java_version`
-4. **Cloning** — Resolves the dependency DAG (41 repos across 7 layers) and clones all repos layer-by-layer
-5. **Installing** — Runs `mvn clean install` on each repo in dependency order with per-repo spinners
-6. **Post-Install Retry** — If any repos fail, offers to retry them immediately
+1. Verify that Git, Maven, and Java are installed.
+2. Read the previous setup manifest and offer to resume, retry, or restart.
+3. Find an installed JDK matching the configured `java_version`.
+4. Clone Jafly on the configured branch.
+5. Run `mvn clean install` once at the reactor root.
+6. Offer to retry a failed installation.
 7. Displays a summary box with total time, repos cloned/installed, and layer count
 
 ### `flywork create [archetype]`
@@ -142,13 +144,13 @@ flywork doctor
 
 ### `flywork update`
 
-Pulls the latest changes for all framework repositories and reinstalls them to `.m2`, respecting DAG dependency order.
+Pulls the Jafly checkout and reinstalls its reactor to `.m2`. Successful installation aligns the configured parent version with the checkout.
 
 ```bash
 flywork update # pull + install all (prompts for tests)
 flywork update --skip-tests # pull + install without tests
 flywork update --pull-only # only git pull, skip maven
-flywork update --repo fireflyframework-utils # single repo
+flywork update --repo fireflyframework-jafly # Java reactor
 flywork update -v # verbose with layer info
 ```
 
@@ -162,14 +164,14 @@ When `--skip-tests` is not provided (and not `--pull-only`), the CLI interactive
 | `--repo` | `""` | Update a single repository by name |
 | `--skip-tests` | `false` | Skip running tests during Maven install |
 
-The update command uses the same DAG resolver as `setup`, with two distinct phases:
+The update command uses the same repository graph as `setup`:
 
-1. **Phase 1** — Git pull with progress bar
-2. **Phase 2** — Maven install with per-repo spinners and elapsed time
+1. Pull the checkout's configured branch. A failed pull stops the update.
+2. Install the Maven reactor and report elapsed time.
 
 ### `flywork build`
 
-Smart DAG-aware build with SHA-based change detection. Detects which repos have changed since the last successful build, computes the transitive closure of affected downstream repos, and builds them in dependency order.
+Builds the Jafly reactor when its checkout SHA differs from the last successful build. Git operations use the repository root; Maven owns the dependency graph between nested modules.
 
 ```bash
 flywork build # build changed repos + affected dependents
@@ -190,17 +192,17 @@ flywork build --jdk /path # use an explicit JAVA_HOME
 | `--skip-tests` | `false` | Skip running tests during Maven install |
 | `--jdk` | `""` | Explicit JAVA_HOME path |
 
-**Phases:**
+Build proceeds as follows:
 
-1. **Preflight** — Verifies Git, Maven, and Java are installed
-2. **Change Detection** — Compares HEAD SHAs against the last-build manifest (`~/.flywork/build-manifest.json`) and computes transitive closure over the DAG
-3. **Build Plan** — Shows affected repos grouped by layer, marks directly changed repos with `*`
-4. **DAG Build** — Runs `mvn clean install` layer-by-layer with progress bars and per-repo spinners
-5. **Summary** — Reports built/skipped/failed counts, total time, and log locations for failures
+1. Verify that Git, Maven, and Java are installed.
+2. Compare the checkout SHA with the last successful build in `~/.flywork/build-manifest.json`.
+3. Show the repository selected for the build.
+4. Run `mvn clean install` at the Jafly root.
+5. Report the result, elapsed time, and log locations for failures.
 
 ### `flywork publish`
 
-Publishes Maven artifacts to GitHub Packages in DAG-resolved order. Uses the same change detection as `build` to only publish what has changed.
+Deploys the Jafly reactor's publishable artifacts to GitHub Packages. The command uses the same checkout-level change detection as `build`; Maven orders the modules.
 
 ```bash
 flywork publish # publish changed repos
@@ -223,17 +225,17 @@ flywork publish --jdk /path # use an explicit JAVA_HOME
 
 Requires `GITHUB_TOKEN` environment variable set with `write:packages` scope.
 
-**Phases:**
+Publication proceeds as follows:
 
-1. **Preflight** — Verifies `GITHUB_TOKEN`, Git, Maven, and Java
-2. **Maven Settings** — Ensures `~/.m2/settings.xml` contains the GitHub Packages server configuration
-3. **Publish Plan** — Shows repos to publish grouped by layer
-4. **Maven Deploy** — Runs `mvn deploy` layer-by-layer with progress bars
-5. **Summary** — Reports published/skipped/failed counts and total time
+1. Verify `GITHUB_TOKEN`, Git, Maven, and Java.
+2. Configure the GitHub Packages server in `~/.m2/settings.xml`.
+3. Show the checkout selected for publication.
+4. Run `mvn deploy` at the reactor root.
+5. Report the deployment result and elapsed time.
 
 ### `flywork dag`
 
-Inspect and query the framework dependency graph. Useful for understanding build order, debugging dependency issues, and CI/CD integration.
+Inspect the repository graph, which contains one Jafly node. Maven resolves module dependencies. `dag affected` lists downstream repositories and excludes its source, so Jafly has no downstream repository nodes; CI should dispatch the reactor directly.
 
 ```bash
 flywork dag show # display full graph as ASCII tree
@@ -254,7 +256,7 @@ flywork dag export # export full DAG as JSON for CI/CD consumption
 
 ### `flywork fwversion`
 
-Manage framework-wide CalVer versions across all repositories. CalVer format: `YY.MM.PP` (e.g., `26.02.07`).
+Manage the Jafly release train across nested POMs using the repository's `scripts/set_version.py`. Versions use padded `YY.MM.PP` (for example, `26.10.17`), where `PP` counts releases within the month. Valid months are 01 through 12. Python 3 must be on PATH.
 
 ```bash
 flywork fwversion show # show current version across all repos
@@ -271,9 +273,9 @@ flywork fwversion families # show version family release history
 | Subcommand | Description |
 |------------|-------------|
 | `show` | Displays current POM versions, mismatches, dirty trees, and config alignment |
-| `bump` | Updates all `pom.xml` files across every repo, optionally commits, tags, and pushes |
+| `bump` | Updates framework versions and references, preserves application and third-party versions, and optionally commits, tags, and pushes |
 | `check` | Runs consistency checks: POM versions, config match, git tags, clean trees, `.m2` artifacts |
-| `families` | Shows version family history — each bump records a snapshot of module SHAs |
+| `families` | Shows version family history; each bump records the repository SHA |
 
 **Bump flags:**
 
@@ -288,64 +290,21 @@ flywork fwversion families # show version family release history
 
 ### `flywork release`
 
-Orchestrates an end-to-end framework release across every Java repo. Walks the dependency DAG layer-by-layer: pushes release branches, opens PRs with auto-merge, waits for CI, admin-merges on review-gate, tags `main` with `v<version>`, waits for the release workflow's GitHub Packages publish, then re-triggers CIs on the next layer so downstream PRs pick up newly-published artifacts.
+Prepares one Jafly release train with the repository version tool, commits the POM changes, opens a release PR, waits for the merge, and tags the exact final commit. Existing tags must resolve to that same commit. Completion requires success of `release.yml` for the exact tag and SHA; the workflow verifies both GitHub Packages and Maven Central before creating the GitHub Release. Branch protection remains active unless `--admin` is explicitly supplied.
 
 ```bash
-flywork release                                Auto-compute next CalVer; orchestrate end-to-end
-flywork release --year 26 --month 5 --patch 8  Explicit target version
-flywork release --from-layer 3                 Resume cascade starting at layer 3
-flywork release --dry-run                      Print plan only, no changes
-flywork release --skip-prs                     Push directly to main (skip PR step, advanced)
-flywork release --repo X                       Limit to a single repo (still respects DAG order)
+flywork release --year 26 --month 10 --patch 17
+flywork release --dry-run
+flywork release --skip-tag # prepare the PR without tagging or publication
+flywork release verify --version 26.10.17
+flywork release publish-mvn-central --version 26.10.17
 ```
 
-**Subcommands:**
+`--dry-run` creates no branches, commits, tags, PRs, or workflow runs. `--from-layer` accepts only `0`; `--repo`, when supplied, must be `fireflyframework-jafly`. `--skip-prs` explicitly requests a direct, non-forced push to main. `--timeout-minutes` defaults to 180 for the PR merge and, separately, the publication workflow. `--admin` defaults to false.
 
-| Subcommand | Description |
-|------------|-------------|
-| `status` | Per-repo release state (✓ released, ⏳ tagged but publish in flight, blank for pending) |
-| `verify` | 3-column status: git tag / GitHub Packages / Maven Central — for any version via `--version` |
-| `publish-mvn-central` | Trigger Maven Central publish workflow (`workflow_dispatch`) for repos missing from Central — retries Sonatype Portal polling timeouts without re-tagging |
+`release verify` resolves the remote tag's commit and checks it against `release-commit.txt`. It clones that tag into a temporary directory, compares the published reactor inventory with the tagged source, and uses that source's `scripts/release_tools.py` to verify every remote file's SHA256. It requires Git, Python 3, an authenticated `gh`, and `GITHUB_ACTOR`/`GITHUB_TOKEN` for GitHub Packages. It fails on a commit mismatch, truncated inventory, absent manifests, missing files, wrong versions, or digest mismatches. Your working checkout stays unchanged.
 
-**Cascade flags:**
-
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--year` / `--month` / `--patch` | auto | Explicit CalVer parts (otherwise next patch is computed) |
-| `--dry-run` | `false` | Print plan without making changes |
-| `--skip-prs` | `false` | Push directly to main (skip PR step) |
-| `--skip-tag` | `false` | Do not tag main (skip release trigger) |
-| `--from-layer` | `0` | Resume cascade starting at this DAG layer (0-indexed) |
-| `--admin` | `true` | Use `--admin` to bypass branch protection / required reviews |
-| `--timeout-minutes` | `30` | Per-layer timeout in minutes for the github-packages wait |
-| `--repo` | `""` | Limit to a single repo (still respects DAG order) |
-
-**verify flags:**
-
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--version` | config | Version to verify (defaults to `config.parent_version`) |
-
-**publish-mvn-central flags:**
-
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--version` | config | Version to publish |
-| `--repo` | `""` | Limit to a single repo |
-| `--wait-seconds` | `3600` | Sonatype Central polling wait time (seconds) — Portal validation can take 20–40 min |
-
-**Maven Central architecture:**
-
-Maven Central publishing is decoupled from the main release workflow (in `fireflyframework/.github/.github/workflows/`). Each repo has two workflows:
-
-- `release.yml` → calls reusable `java-release.yml` → GH Packages publish + GitHub Release page (fast, deterministic, completes in ~90s)
-- `maven-central.yml` → calls reusable `java-publish-maven-central.yml` → Sonatype Portal publish (slow, up to 60 min; can be retried via `workflow_dispatch` without re-tagging)
-
-This means a slow Sonatype validation no longer blocks the fast GitHub Packages publish or the Release page creation. Retry independently via:
-
-```bash
-flywork release publish-mvn-central --version 26.05.07 --repo fireflyframework-plugins
-```
+The compatibility command `publish-mvn-central` dispatches the combined `release.yml` at the existing `v<version>` tag. It reports dispatch only; the workflow owns immutable publication checks and can fail safely if a partially published version cannot be retried. The old `--wait-seconds` flag is retained for compatibility; the destination workflow controls its own timeout.
 
 ### `flywork run`
 
@@ -358,13 +317,13 @@ flywork run --skip-wizard # skip the configuration wizard
 flywork run --profile local --skip-wizard # non-interactive run with 'local' profile
 ```
 
-**What it does:**
+The runner performs these steps:
 
-1. **Project Analysis** — Detects archetype (core, domain, application, library), multi-module layout, and locates the web/boot module
-2. **Profile Selection** — If Spring profiles are detected (e.g. `dev`, `local`) and `--profile` is not provided, offers an interactive selection prompt
-3. **Configuration Scanning** — Parses `application.yaml` for `${PLACEHOLDER}` variables and groups them into: set from environment, have defaults, or missing (required)
-4. **Interactive Wizard** — Prompts for required variables, offers to override defaults, and uses smart defaults for common names (e.g. `DB_HOST` → `localhost`, `DB_PORT` → `5432`)
-5. **Launch** — Starts the application with `mvn spring-boot:run` passing the selected profile and environment variable overrides
+1. Detect the archetype and project layout, then locate the Spring Boot module.
+2. Offer a profile selection when profiles are available and `--profile` is absent.
+3. Read `${PLACEHOLDER}` variables from `application.yaml`, identifying values supplied by the environment, defaults, and missing required values.
+4. Ask for missing values and offer default overrides. Common names have suggested values such as `DB_HOST=localhost` and `DB_PORT=5432`.
+5. Start `mvn spring-boot:run` with the selected profile and environment values.
 
 **Flags:**
 
@@ -410,7 +369,7 @@ flywork version
 
 ---
 
-## Global Flags
+## Global flags
 
 | Flag | Short | Description |
 |------|-------|-------------|
@@ -421,24 +380,9 @@ The `--verbose` flag is available on all commands. It enables additional output 
 
 ---
 
-## DAG Dependency Resolution
+## Repository and module ordering
 
-The CLI maintains an internal **directed acyclic graph** of all 41 framework repositories with their real Maven dependency relationships. This ensures:
-
-- **Correct build order** — repositories are always compiled after their dependencies
-- **Layer grouping** — independent repos are grouped into layers for potential parallelization
-- **Cycle detection** — the DAG engine detects and reports circular dependencies with the exact cycle path
-
-**Dependency layers:**
-
-| Layer | Repositories |
-|-------|-------------|
-| 0 (1) | `parent` |
-| 1 (10) | `bom`, `utils`, `cache`, `eda`, `ecm`, `idp`, `config-server`, `client`, `validators`, `plugins`, `observability` |
-| 2 (9) | `r2dbc`, `cqrs`, `web`, `orchestration`, `ecm-esignature-adobe-sign`, `ecm-esignature-docusign`, `ecm-esignature-logalty`, `ecm-storage-aws`, `ecm-storage-azure`, `idp-aws-cognito`, `idp-keycloak` |
-| 3 (6) | `eventsourcing`, `application`, `idp-internal-db`, `core`, `domain`, `data` |
-| 4 (5) | `webhooks`, `callbacks`, `notifications`, `rule-engine`, `backoffice` |
-| 5 (4) | `notifications-firebase`, `notifications-resend`, `notifications-sendgrid`, `notifications-twilio` |
+The CLI repository graph has one node, `fireflyframework-jafly`. `dag export --json` exports one layer. Nested directories such as `build/parent`, `build/bom`, and `modules/kernel` are Maven modules, not independent Git repositories. Module ordering and cycles are checked by Maven's reactor.
 
 ---
 
@@ -446,23 +390,33 @@ The CLI maintains an internal **directed acyclic graph** of all 41 framework rep
 
 Configuration is stored in `~/.flywork/config.yaml`.
 
+Set `FLYWORK_HOME` to a separate directory to isolate configuration, setup state,
+logs, and the default checkout location. For example:
+
+```bash
+FLYWORK_HOME="$PWD/.flywork-jafly" flywork setup --jdk /path/to/jdk-25
+```
+
+This does not change Maven's cache location. Use Maven's `-Dmaven.repo.local`
+setting separately when an isolated artifact cache is required.
+
 | Key | Default | Description |
 |-----|---------|-------------|
 | `repos_path` | `~/.flywork/repos` | Where framework repos are cloned |
 | `github_org` | `fireflyframework` | GitHub organization name |
 | `default_group_id` | `org.fireflyframework` | Default Maven groupId for new projects |
 | `java_version` | `25` | Target Java version for compilation |
-| `parent_version` | `26.05.07` | Parent POM CalVer version for archetypes |
+| `parent_version` | `26.10.17-SNAPSHOT` | Initial Jafly version; successful setup/update saves the installed version |
 | `cli_auto_update` | `false` | Auto-check for CLI updates on launch |
 | `branch` | `develop` | Git branch to clone during setup |
 
-### Dynamic Java Version
+### Select the Java version
 
 The CLI automatically detects installed Java versions:
 
-- **macOS** — Uses `/usr/libexec/java_home -v <version>`
-- **Linux** — Scans `/usr/lib/jvm/` and `update-alternatives`
-- **Windows** — Scans `Program Files\Java`, `Eclipse Adoptium`, `Corretto`, etc.
+- macOS uses `/usr/libexec/java_home -v <version>`.
+- Linux scans `/usr/lib/jvm/` and `update-alternatives`.
+- Windows scans locations including `Program Files\Java`, `Eclipse Adoptium`, and `Corretto`.
 
 Change the required Java version:
 
@@ -474,20 +428,20 @@ All `setup` and `update` commands will automatically resolve the correct `JAVA_H
 
 ---
 
-## Archetype System
+## Project archetypes
 
-### Built-in Archetypes
+### Built-in archetypes
 
 Archetypes are YAML-driven definitions embedded in the CLI binary. Each archetype defines:
 
-- **Module structure** — multi-module or single-module layout
-- **Parent POM** — inherited from `fireflyframework-parent`
-- **Dependencies** — per-module Maven dependencies
-- **Plugins** — Maven plugins (Spring Boot, MapStruct, OpenAPI Generator, etc.)
-- **Templates** — Go template files rendered with project metadata
-- **Package layout** — Java package directories to create
+- Single-module or multi-module layout
+- Parent POM inherited from `fireflyframework-parent`
+- Maven dependencies for each module
+- Maven plugins, including Spring Boot, MapStruct, and OpenAPI Generator
+- Go templates rendered with project metadata
+- Java package directories
 
-### Customizing Archetypes
+### Customize an archetype
 
 You can override any built-in archetype or create new ones by placing YAML files in:
 
@@ -530,7 +484,7 @@ rootTemplates:
   - { src: "shared/README.md.tmpl", dest: "README.md" }
 ```
 
-### Creating New Archetypes
+### Create an archetype
 
 1. Create a YAML file in `~/.flywork/archetypes/<name>.yaml`
 2. Define modules, dependencies, and template references
@@ -561,9 +515,10 @@ irm https://raw.githubusercontent.com/fireflyframework/fireflyframework-cli/main
 ### Prerequisites
 
 - Go 1.25+
+- Python 3 (installer regression tests and Jafly version/release tools)
 - Make
 
-### Build Targets
+### Build targets
 
 ```bash
 make build # build for current platform → bin/flywork
@@ -576,7 +531,7 @@ make release # build-all + create .tar.gz / .zip archives
 make checksums # release + SHA256 checksums
 ```
 
-### Project Structure
+### Project structure
 
 ```
 fireflyframework-cli/

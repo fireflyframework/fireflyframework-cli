@@ -32,3 +32,6 @@ go.work.sum
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+# Python installer regression tests
+__pycache__/

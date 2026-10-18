@@ -24,7 +24,7 @@ modules:
       - { groupId: "com.fasterxml.jackson.core", artifactId: "jackson-databind" }
       - { groupId: "com.fasterxml.jackson.datatype", artifactId: "jackson-datatype-jsr310" }
     testDependencies:
-      - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-test" }
+      - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-webflux-test" }
       - { groupId: "io.projectreactor", artifactId: "reactor-test" }
     templates:
       - { src: "core/interfaces-pom.xml.tmpl", dest: "pom.xml" }
@@ -65,7 +65,7 @@ modules:
       - { groupId: "org.mapstruct", artifactId: "mapstruct" }
       - { groupId: "org.projectlombok", artifactId: "lombok", scope: "provided" }
     testDependencies:
-      - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-test" }
+      - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-webflux-test" }
       - { groupId: "io.projectreactor", artifactId: "reactor-test" }
     plugins:
       - mapstruct-lombok
@@ -111,7 +111,7 @@ modules:
       - { groupId: "io.micrometer", artifactId: "micrometer-registry-prometheus" }
       - { groupId: "org.projectlombok", artifactId: "lombok", scope: "provided" }
     testDependencies:
-      - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-test" }
+      - { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-webflux-test" }
       - { groupId: "io.projectreactor", artifactId: "reactor-test" }
     plugins:
       - spring-boot
@@ -120,7 +120,6 @@ modules:
     springBoot: true
     annotations:
       - "@SpringBootApplication"
-      - "@EnableWebFlux"
       - "@EnableR2dbcRepositories"
       - "@EnableR2dbcAuditing"
       - "@ConfigurationPropertiesScan"

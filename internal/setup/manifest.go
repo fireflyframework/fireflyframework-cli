@@ -32,7 +32,7 @@ const (
 	StatusFailed  Status = "failed"
 	StatusSkipped Status = "skipped"
 
-	ManifestFile = "setup-manifest.json"
+	ManifestFile = "setup-manifest-jafly.json"
 	ManifestVer  = 1
 )
 
@@ -58,7 +58,7 @@ type Manifest struct {
 	path string // file path (not serialised)
 }
 
-// DefaultManifestPath returns ~/.flywork/setup-manifest.json.
+// DefaultManifestPath returns ~/.flywork/setup-manifest-jafly.json.
 func DefaultManifestPath() string {
 	return filepath.Join(config.FlyworkHome(), ManifestFile)
 }
@@ -254,12 +254,12 @@ func (m *Manifest) IsComplete() bool {
 
 // Summary returns human-readable counts.
 type ManifestSummary struct {
-	Total          int
-	ClonesOK       int
-	ClonesFailed   int
-	ClonesPending  int
-	InstallsOK     int
-	InstallsFailed int
+	Total           int
+	ClonesOK        int
+	ClonesFailed    int
+	ClonesPending   int
+	InstallsOK      int
+	InstallsFailed  int
 	InstallsPending int
 }
 

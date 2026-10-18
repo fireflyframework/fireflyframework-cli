@@ -17,6 +17,7 @@ package version
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -101,15 +102,39 @@ func bumpRepo(opts BumpOptions, repo string) RepoResult {
 		return r
 	}
 
-	// Replace versions
+	before := make(map[string]string, len(poms))
 	for _, p := range poms {
-		if err := ReplacePomVersion(p, opts.OldVersion, opts.NewVersion); err != nil {
-			r.Error = fmt.Errorf("replace in %s: %w", filepath.Base(p), err)
+		data, err := os.ReadFile(p)
+		if err != nil {
+			r.Error = err
 			return r
 		}
-		// Check if the file was actually changed
-		data, _ := os.ReadFile(p)
-		if strings.Contains(string(data), opts.NewVersion) {
+		before[p] = string(data)
+	}
+	if repo == "fireflyframework-jafly" {
+		// The repository owns semantic updates, including nested parent and BOM
+		// references. Global replacement could change an unrelated dependency.
+		command := exec.Command("python3", filepath.Join(repoDir, "scripts", "set_version.py"), opts.NewVersion)
+		command.Dir = repoDir
+		if out, err := command.CombinedOutput(); err != nil {
+			r.Error = fmt.Errorf("set framework version: %w: %s", err, strings.TrimSpace(string(out)))
+			return r
+		}
+	} else {
+		for _, p := range poms {
+			if err := ReplacePomVersion(p, opts.OldVersion, opts.NewVersion); err != nil {
+				r.Error = err
+				return r
+			}
+		}
+	}
+	for _, p := range poms {
+		data, err := os.ReadFile(p)
+		if err != nil {
+			r.Error = err
+			return r
+		}
+		if string(data) != before[p] {
 			r.Updated++
 		}
 	}

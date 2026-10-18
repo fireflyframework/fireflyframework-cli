@@ -15,6 +15,7 @@
 package version
 
 import (
+	"encoding/xml"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -22,36 +23,24 @@ import (
 	"strings"
 )
 
-// FindAllPoms finds root pom.xml + one-level-deep submodule poms in a repo directory.
-// Excludes target/ directories.
+// FindAllPoms finds nested framework POMs while excluding build output and
+// dependency directories. Git operations still run only at the checkout root.
 func FindAllPoms(repoDir string) []string {
 	var poms []string
-
-	root := filepath.Join(repoDir, "pom.xml")
-	if _, err := os.Stat(root); err == nil {
-		poms = append(poms, root)
-	}
-
-	// Check one-level-deep subdirectories for submodule poms
-	entries, err := os.ReadDir(repoDir)
-	if err != nil {
-		return poms
-	}
-
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
+	_ = filepath.WalkDir(repoDir, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return nil
 		}
-		name := entry.Name()
-		if name == "target" || name == ".git" || name == "node_modules" {
-			continue
+		if entry.IsDir() {
+			switch entry.Name() {
+			case "target", ".git", "node_modules", ".venv":
+				return filepath.SkipDir
+			}
+		} else if entry.Name() == "pom.xml" && entry.Type().IsRegular() {
+			poms = append(poms, path)
 		}
-		subPom := filepath.Join(repoDir, name, "pom.xml")
-		if _, err := os.Stat(subPom); err == nil {
-			poms = append(poms, subPom)
-		}
-	}
-
+		return nil
+	})
 	return poms
 }
 
@@ -73,34 +62,110 @@ func ReplacePomVersion(pomPath, oldVer, newVer string) error {
 	return os.WriteFile(pomPath, []byte(updated), 0644)
 }
 
-// versionRe matches the first <version>...</version> inside a <project> or <parent> block.
-var versionRe = regexp.MustCompile(`<version>\s*([^<]+?)\s*</version>`)
+type pomReference struct {
+	GroupID string `xml:"groupId"`
+	Version string `xml:"version"`
+}
 
-// parentBlockRe extracts the <parent>...</parent> block.
-var parentBlockRe = regexp.MustCompile(`(?s)<parent>(.+?)</parent>`)
+type pomDocument struct {
+	GroupID             string         `xml:"groupId"`
+	Version             string         `xml:"version"`
+	Parent              pomReference   `xml:"parent"`
+	Dependencies        []pomReference `xml:"dependencies>dependency"`
+	ManagedDependencies []pomReference `xml:"dependencyManagement>dependencies>dependency"`
+	Properties          struct {
+		Values []struct {
+			XMLName xml.Name
+			Value   string `xml:",chardata"`
+		} `xml:",any"`
+	} `xml:"properties"`
+}
 
-// ReadPomVersion extracts the project's own <version> from the POM file.
-// It first looks for a <parent> block and returns the version from there.
-// Falls back to the first top-level <version> tag.
-func ReadPomVersion(pomPath string) (string, error) {
+func readPomDocument(pomPath string) (*pomDocument, error) {
 	data, err := os.ReadFile(pomPath)
 	if err != nil {
-		return "", fmt.Errorf("read %s: %w", pomPath, err)
+		return nil, fmt.Errorf("read %s: %w", pomPath, err)
 	}
+	var pom pomDocument
+	if err := xml.Unmarshal(data, &pom); err != nil {
+		return nil, fmt.Errorf("parse %s: %w", pomPath, err)
+	}
+	return &pom, nil
+}
 
-	content := string(data)
+func (pom *pomDocument) version() string {
+	if ver := strings.TrimSpace(pom.Version); ver != "" {
+		return ver
+	}
+	return strings.TrimSpace(pom.Parent.Version)
+}
 
-	// Try parent block version first (most framework repos inherit version from parent)
-	if m := parentBlockRe.FindStringSubmatch(content); len(m) >= 2 {
-		if vm := versionRe.FindStringSubmatch(m[1]); len(vm) >= 2 {
-			return vm[1], nil
+func frameworkGroup(group string) bool {
+	group = strings.TrimSpace(group)
+	return group == "org.fireflyframework" || strings.HasPrefix(group, "org.fireflyframework.")
+}
+
+// ReadPomVersion returns the project's explicit version, or its inherited
+// parent version when the project omits its own version.
+func ReadPomVersion(pomPath string) (string, error) {
+	pom, err := readPomDocument(pomPath)
+	if err != nil {
+		return "", err
+	}
+	if ver := pom.version(); ver != "" {
+		return ver, nil
+	}
+	return "", fmt.Errorf("no <version> found in %s", pomPath)
+}
+
+func frameworkVersions(pomPath, train string) ([]string, error) {
+	pom, err := readPomDocument(pomPath)
+	if err != nil {
+		return nil, err
+	}
+	group := strings.TrimSpace(pom.GroupID)
+	if group == "" {
+		group = pom.Parent.GroupID
+	}
+	var versions []string
+	if frameworkGroup(group) {
+		if ver := pom.version(); ver != "" {
+			versions = append(versions, ver)
+		} else {
+			return nil, fmt.Errorf("no framework version found in %s", pomPath)
 		}
 	}
-
-	// Fall back to first <version> in file
-	if m := versionRe.FindStringSubmatch(content); len(m) >= 2 {
-		return m[1], nil
+	properties := map[string]string{
+		"project.version": pom.version(), "pom.version": pom.version(),
+		"project.parent.version": pom.Parent.Version, "parent.version": pom.Parent.Version,
+		"fireflyframework.version": train,
 	}
-
-	return "", fmt.Errorf("no <version> found in %s", pomPath)
+	for _, property := range pom.Properties.Values {
+		properties[property.XMLName.Local] = strings.TrimSpace(property.Value)
+	}
+	propertyReference := regexp.MustCompile(`\$\{([^}]+)\}`)
+	references := append([]pomReference{pom.Parent}, pom.Dependencies...)
+	references = append(references, pom.ManagedDependencies...)
+	for _, reference := range references {
+		if !frameworkGroup(reference.GroupID) {
+			continue
+		}
+		ver := strings.TrimSpace(reference.Version)
+		for attempt := 0; attempt < 10; attempt++ {
+			resolved := propertyReference.ReplaceAllStringFunc(ver, func(reference string) string {
+				if value, ok := properties[reference[2:len(reference)-1]]; ok {
+					return value
+				}
+				return reference
+			})
+			if resolved == ver {
+				break
+			}
+			ver = resolved
+		}
+		if ver != "" && !strings.Contains(ver, "${") {
+			versions = append(versions, ver)
+		}
+	}
+	return versions, nil
 }

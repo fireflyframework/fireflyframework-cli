@@ -40,8 +40,9 @@ var (
 var setupCmd = &cobra.Command{
 	Use:   "setup",
 	Short: "Bootstrap the Firefly Framework into your local environment",
-	Long: `Clones all fireflyframework repositories and installs them to your local Maven
-repository (~/.m2) in DAG-resolved dependency order.
+	Long: `Clones the Jafly monorepo and installs its complete Maven reactor to your local
+Maven repository (~/.m2). Existing legacy checkouts remain in place.
+Set FLYWORK_HOME to isolate CLI configuration, setup state, logs, and checkouts.
 
 The setup process runs through the following phases:
 
@@ -53,11 +54,11 @@ The setup process runs through the following phases:
     (default: 25). Use --jdk to skip auto-detection and provide an explicit path.
 
   Phase 2 — Cloning Repositories
-    Clones all framework repos layer-by-layer based on the dependency graph.
+    Clones fireflyframework-jafly on the configured branch.
     A live progress bar tracks overall progress.
 
   Phase 3 — Installing Artifacts
-    Runs 'mvn clean install' on each repository in dependency order. Per-repo
+    Runs 'mvn clean install' once at the monorepo root. Per-repo
     spinners show elapsed time. When --skip-tests is not provided, the CLI
     interactively asks whether to run tests (default: yes).
 
@@ -67,7 +68,7 @@ The setup process runs through the following phases:
 
 Resume and retry behavior:
   If a previous setup was interrupted, the CLI detects the manifest file
-  (~/.flywork/setup-manifest.json) and offers to resume, retry failed repos,
+  (~/.flywork/setup-manifest-jafly.json) and offers to resume, retry failed repos,
   or start fresh. Use --retry to skip the prompt and directly retry failures.
   Use --fresh to ignore any previous manifest and start over.
 
@@ -122,7 +123,7 @@ func runSetup(cmd *cobra.Command, args []string) error {
 		javaVer, _ := java.CurrentVersion()
 		checks = append(checks, ui.CheckResult{Name: "Java", Status: "pass", Detail: fmt.Sprintf("version %d", javaVer)})
 	} else {
-		checks = append(checks, ui.CheckResult{Name: "Java", Status: "fail", Detail: "not found — install Java 21+ (25 recommended) first"})
+		checks = append(checks, ui.CheckResult{Name: "Java", Status: "fail", Detail: "not found — install Java 25 first"})
 	}
 
 	p.PrintChecks(checks)
@@ -488,7 +489,11 @@ func runSetup(cmd *cobra.Command, args []string) error {
 	}
 	_ = manifest.Save()
 
-	if err := cfg.Save(); err != nil {
+	if s.ClonesFailed == 0 && s.InstallsFailed == 0 && s.InstallsPending == 0 {
+		if err := syncJaflyParentVersion(cfg); err != nil {
+			return fmt.Errorf("save installed framework version: %w", err)
+		}
+	} else if err := cfg.Save(); err != nil {
 		p.Warning("Could not save config: " + err.Error())
 	}
 

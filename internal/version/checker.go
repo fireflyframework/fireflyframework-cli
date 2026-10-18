@@ -63,6 +63,19 @@ func CheckAll(reposDir string) (*VersionReport, error) {
 		if rs.HasPom && rs.PomVersion != "" {
 			report.UniqueVersions[rs.PomVersion]++
 			report.TotalWithPom++
+			repoDir := filepath.Join(reposDir, repo)
+			for _, pom := range FindAllPoms(repoDir) {
+				if pom == filepath.Join(repoDir, "pom.xml") {
+					continue
+				}
+				versions, err := frameworkVersions(pom, rs.PomVersion)
+				if err != nil {
+					return nil, err
+				}
+				for _, ver := range versions {
+					report.UniqueVersions[ver]++
+				}
+			}
 		}
 	}
 

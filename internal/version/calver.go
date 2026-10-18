@@ -57,6 +57,9 @@ func Parse(s string) (CalVer, error) {
 	if err != nil {
 		return CalVer{}, fmt.Errorf("invalid patch in calver %q: %w", s, err)
 	}
+	if yy < 0 || yy > 99 || mm < 1 || mm > 12 || p < 0 || p > 99 {
+		return CalVer{}, fmt.Errorf("invalid calver %q: require year 00-99, month 01-12, and release counter 00-99", s)
+	}
 	return CalVer{Year: yy, Month: mm, Patch: p}, nil
 }
 

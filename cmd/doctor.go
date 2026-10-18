@@ -31,13 +31,13 @@ var doctorCmd = &cobra.Command{
 a Firefly project directory, also runs project-specific checks.
 
 Global environment checks:
-  - Java version detection (matches configured java_version)
+  - Java 25+ detection (configured java_version cannot lower the minimum)
   - JAVA_HOME resolution
-  - Maven version and Java compatibility
+  - Maven version and its actual Java 25+ runtime
   - Git installation
   - Framework repositories cloned status
-  - Parent POM presence in ~/.m2
-  - BOM presence in ~/.m2
+  - Configured parent_version POM presence in ~/.m2
+  - Configured parent_version BOM presence in ~/.m2
   - CLI version check (latest available vs installed)
 
 Project-specific checks (when inside a Firefly project):

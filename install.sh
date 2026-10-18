@@ -4,6 +4,7 @@
 #   curl -fsSL https://raw.githubusercontent.com/fireflyframework/fireflyframework-cli/main/install.sh | bash
 #   FLYWORK_VERSION=v26.02.03 bash install.sh
 #   FLYWORK_INSTALL_DIR=/custom/path bash install.sh
+#   FLYWORK_NO_MODIFY_PATH=1 bash install.sh # never edit shell profiles
 
 set -euo pipefail
 
@@ -143,33 +144,36 @@ add_to_path() {
         *)      shell_rc="$HOME/.profile" ;;
     esac
 
-    if ! echo "$PATH" | tr ':' '\n' | grep -q "^${dir}$"; then
-        local export_line="export PATH=\"${dir}:\$PATH\""
-        if [ -f "$shell_rc" ] && grep -qF "$dir" "$shell_rc" 2>/dev/null; then
-            return
-        fi
-        echo "" >> "$shell_rc"
-        echo "# Firefly Framework CLI" >> "$shell_rc"
-        echo "$export_line" >> "$shell_rc"
-        warn "Added ${dir} to PATH in ${shell_rc} — restart your shell or run: source ${shell_rc}"
+    case ":${PATH}:" in
+        *":${dir}:"*) return ;;
+    esac
+    local export_line="export PATH=\"${dir}:\$PATH\""
+    if [ -f "$shell_rc" ] && grep -qF "$dir" "$shell_rc" 2>/dev/null; then
+        return
     fi
+    echo "" >> "$shell_rc"
+    echo "# Firefly Framework CLI" >> "$shell_rc"
+    echo "$export_line" >> "$shell_rc"
+    warn "Added ${dir} to PATH in ${shell_rc} — restart your shell or run: source ${shell_rc}"
 }
 
-if ! echo "$PATH" | tr ':' '\n' | grep -q "^${FLYWORK_INSTALL_DIR}$"; then
-    add_to_path "$FLYWORK_INSTALL_DIR"
-    export PATH="${FLYWORK_INSTALL_DIR}:$PATH"
-fi
+case ":${PATH}:" in
+    *":${FLYWORK_INSTALL_DIR}:"*) ;;
+    *)
+        if [ "${FLYWORK_NO_MODIFY_PATH:-0}" != "1" ]; then
+            add_to_path "$FLYWORK_INSTALL_DIR"
+        fi
+        export PATH="${FLYWORK_INSTALL_DIR}:$PATH"
+        ;;
+esac
 
 # ── Verify ───────────────────────────────────────────────────────────────────
 
 echo ""
-if command -v "$BINARY" &>/dev/null; then
+if "${FLYWORK_INSTALL_DIR}/${BINARY}" version; then
     success "Installation complete!"
-    echo ""
-    "$BINARY" version
 else
-    warn "Installed, but '${BINARY}' is not in PATH yet. Restart your shell or run:"
-    echo "  export PATH=\"${FLYWORK_INSTALL_DIR}:\$PATH\""
+    error "Installed binary could not be verified: ${FLYWORK_INSTALL_DIR}/${BINARY}"
 fi
 
 echo ""

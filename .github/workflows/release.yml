@@ -1,19 +1,57 @@
 name: Release
+
 on:
   push:
     tags: ['v*']
   workflow_dispatch:
     inputs:
-      triggered-by:
-        description: 'Orchestrator run ID'
-        required: false
+      tag:
+        description: 'Existing final CLI tag, such as v26.10.17'
+        required: true
         type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cli-release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
 jobs:
   release:
-    uses: fireflyframework/.github/.github/workflows/go-release.yml@main
-    with:
-      go-version: '1.25'
-      binary-name: flywork
-    permissions:
-      contents: write
-    secrets: inherit
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Verify immutable release input
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]{2}\.(0[1-9]|1[0-2])\.[0-9]{2}$ ]]
+          test "$(git rev-parse "${RELEASE_TAG}^{commit}")" = "$(git rev-parse HEAD)"
+          test -z "$(git status --porcelain)"
+      - name: Test and vet
+        run: make test vet
+      - name: Build the six installer-compatible archives and checksums
+        run: make checksums VERSION="$RELEASE_TAG"
+      - name: Verify checksums and embedded version
+        run: |
+          test "$(wc -l < dist/checksums.txt)" -eq 6
+          (cd dist && sha256sum --check checksums.txt)
+          OUTPUT=$("dist/flywork-${RELEASE_TAG}-linux-amd64/flywork" version)
+          echo "$OUTPUT"
+          grep -F "$RELEASE_TAG" <<< "$OUTPUT"
+          grep -F "$(git rev-parse --short HEAD)" <<< "$OUTPUT"
+          test "$(find dist -maxdepth 1 \( -name '*.tar.gz' -o -name '*.zip' \) | wc -l)" -eq 6
+      - name: Create immutable GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          gh release create "$RELEASE_TAG"
+          --verify-tag --title "$RELEASE_TAG" --generate-notes --latest
+          dist/*.tar.gz dist/*.zip dist/checksums.txt

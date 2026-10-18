@@ -30,9 +30,9 @@ import (
 )
 
 var (
-	updatePullOnly    bool
-	updateRepo        string
-	updateSkipTests   bool
+	updatePullOnly  bool
+	updateRepo      string
+	updateSkipTests bool
 )
 
 var updateCmd = &cobra.Command{
@@ -53,14 +53,14 @@ The update process has two phases:
     Per-repo spinners show elapsed time. When --skip-tests is not provided,
     the CLI interactively asks whether to run tests (default: yes).
 
-Use --repo to update a single repository by name (e.g. fireflyframework-utils).
+Use --repo to update a single repository by name (e.g. fireflyframework-jafly).
 Use --pull-only to only fetch the latest code without running Maven install.
 
 Examples:
   flywork update                                  Pull + install all repos
   flywork update --skip-tests                     Skip tests during install
   flywork update --pull-only                      Only git pull, skip Maven
-  flywork update --repo fireflyframework-utils    Update a single repository
+  flywork update --repo fireflyframework-jafly    Update a single repository
   flywork update -v                               Verbose with layer details`,
 	RunE: runUpdate,
 }
@@ -169,7 +169,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	p.Newline()
 	p.Info(fmt.Sprintf("Pull: %d pulled, %d skipped, %d failed", pulled, pullSkipped, pullFailed))
 
-	if pullFailed > 0 && updatePullOnly {
+	if pullFailed > 0 {
 		return fmt.Errorf("%d repositories failed to pull", pullFailed)
 	}
 
@@ -192,7 +192,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 			activeSpinner = ui.NewSpinner(fmt.Sprintf("Building %s...", repo))
 			activeSpinner.Start()
 
-		var installErr error
+			var installErr error
 			if javaHome != "" {
 				installErr = maven.InstallQuietWithJava(repoDir, javaHome, updateSkipTests)
 			} else {
@@ -218,6 +218,10 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 
 		if installFailed > 0 {
 			return fmt.Errorf("%d repositories failed to install", installFailed)
+		}
+
+		if err := syncJaflyParentVersion(cfg); err != nil {
+			return fmt.Errorf("save installed framework version: %w", err)
 		}
 
 		// ── Summary ─────────────────────────────────────────────────────────

@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/fireflyframework/fireflyframework-cli/internal/config"
@@ -232,7 +233,7 @@ func runFwversionBump(cmd *cobra.Command, args []string) error {
 	}
 
 	// Detect current version from parent POM
-	parentPom := filepath.Join(cfg.ReposPath, "fireflyframework-parent", "pom.xml")
+	parentPom := filepath.Join(cfg.ReposPath, "fireflyframework-jafly", "build", "parent", "pom.xml")
 	oldVer := cfg.ParentVersion
 	if detected, err := version.ReadPomVersion(parentPom); err == nil {
 		oldVer = detected
@@ -242,7 +243,7 @@ func runFwversionBump(cmd *cobra.Command, args []string) error {
 	// ── Phase 2: Target resolution ──────────────────────────────────────
 	var target version.CalVer
 	if bumpAuto {
-		current, err := version.Parse(oldVer)
+		current, err := version.Parse(strings.TrimSuffix(oldVer, "-SNAPSHOT"))
 		if err != nil {
 			current = version.Current()
 		}
@@ -251,7 +252,7 @@ func runFwversionBump(cmd *cobra.Command, args []string) error {
 		target = version.CalVer{Year: bumpYear, Month: bumpMonth, Patch: bumpPatch}
 	} else {
 		// Default: try parsing current and auto-increment
-		current, err := version.Parse(oldVer)
+		current, err := version.Parse(strings.TrimSuffix(oldVer, "-SNAPSHOT"))
 		if err != nil {
 			target = version.Current()
 		} else {
@@ -260,6 +261,9 @@ func runFwversionBump(cmd *cobra.Command, args []string) error {
 	}
 
 	newVer := target.String()
+	if _, err := version.Parse(newVer); err != nil {
+		return fmt.Errorf("invalid version target: %w", err)
+	}
 	p.KeyValue("Target version", newVer)
 
 	if bumpDryRun {

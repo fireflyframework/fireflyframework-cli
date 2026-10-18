@@ -119,11 +119,11 @@ type KeyValue struct {
 
 func DefaultConfig() *Config {
 	return &Config{
-		ReposPath:     filepath.Join(HomeDir(), FireflyDir, ReposDir),
+		ReposPath:     filepath.Join(FlyworkHome(), ReposDir),
 		GithubOrg:     "fireflyframework",
 		DefaultGroup:  "org.fireflyframework",
 		JavaVersion:   "25",
-		ParentVersion: "26.05.08",
+		ParentVersion: "26.10.17-SNAPSHOT",
 		Branch:        "develop",
 	}
 }
@@ -137,6 +137,9 @@ func HomeDir() string {
 }
 
 func FlyworkHome() string {
+	if dir := os.Getenv("FLYWORK_HOME"); dir != "" {
+		return filepath.Clean(dir)
+	}
 	return filepath.Join(HomeDir(), FireflyDir)
 }
 

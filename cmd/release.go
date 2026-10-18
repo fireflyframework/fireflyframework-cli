@@ -51,35 +51,42 @@ var (
 var releaseCmd = &cobra.Command{
 	Use:   "release",
 	Short: "Orchestrate end-to-end framework release (bump + PR + merge + tag + wait)",
-	Long: `Orchestrates a full Firefly Framework release across every Java repo.
+	Long: `Prepare the Jafly release train with its version tool, open a release PR,
+wait for its merge, and tag the final commit. The exact tag and commit's release
+workflow must verify GitHub Packages and Maven Central before completion.
 
-Phases per DAG layer (parent → ... → adapters → starter-application):
-  1. Switch each repo to release/<target>
-  2. Push branch to origin
-  3. Open PR (release/<target> → main) with auto-merge enabled
-  4. Wait for CI green (re-trigger on transient failures from missing parent layer artifacts)
-  5. Admin-merge if review-required gate blocks auto-merge
-  6. Tag main with v<target>, push tag → fires release workflow
-  7. Wait for release workflow's "github-packages" job to succeed
-  8. Re-trigger CIs on next layer's open PRs (empty commit) so they pick up newly-published deps
-
-Requires:
-  - gh CLI authenticated (gh auth status)
-  - All repos cloned (run 'flywork setup' first)
-  - All repos on a clean working tree (run 'flywork fwversion check')
+Requires Python 3, authenticated gh, a clean Jafly checkout, and release credentials.
+Use --dry-run to print the plan without changing local or remote state.
+Branch protection is respected unless --admin is explicitly supplied.
 
 Examples:
-  flywork release                              Auto-compute next CalVer; orchestrate end-to-end
-  flywork release --year 26 --month 5 --patch 7    Explicit target version
-  flywork release --from-layer 3               Resume cascade starting at layer 3
-  flywork release --dry-run                    Print plan only, no changes
-  flywork release --skip-prs                   Push directly to main, skip PR step (advanced)`,
+  flywork release --year 26 --month 10 --patch 17
+  flywork release --dry-run
+  flywork release --skip-tag
+  flywork release verify --version 26.10.17`,
 	RunE: runRelease,
+}
+
+func resolveJaflyReleaseTarget(current string) (version.CalVer, error) {
+	parsed, err := version.Parse(strings.TrimSuffix(current, "-SNAPSHOT"))
+	if err != nil {
+		return version.CalVer{}, err
+	}
+	if strings.HasSuffix(current, "-SNAPSHOT") {
+		return parsed, nil
+	}
+	return version.Next(parsed), nil
 }
 
 func runRelease(cmd *cobra.Command, args []string) error {
 	p := ui.NewPrinter()
 	overallStart := time.Now()
+	if releaseRepoOverride != "" && releaseRepoOverride != "fireflyframework-jafly" {
+		return fmt.Errorf("Java releases use fireflyframework-jafly")
+	}
+	if releaseFromLayer != 0 {
+		return fmt.Errorf("Jafly has one repository layer; --from-layer must be 0")
+	}
 
 	// ── Phase 1: Pre-flight ──────────────────────────────────────────────
 	p.StageHeader(1, "Pre-flight")
@@ -95,7 +102,7 @@ func runRelease(cmd *cobra.Command, args []string) error {
 	}
 
 	// Resolve target version
-	parentPom := filepath.Join(cfg.ReposPath, "fireflyframework-parent", "pom.xml")
+	parentPom := filepath.Join(cfg.ReposPath, "fireflyframework-jafly", "build", "parent", "pom.xml")
 	currentVer := cfg.ParentVersion
 	if detected, err := version.ReadPomVersion(parentPom); err == nil {
 		currentVer = detected
@@ -104,13 +111,15 @@ func runRelease(cmd *cobra.Command, args []string) error {
 	if releaseTargetYear > 0 || releaseTargetMonth > 0 || releaseTargetPatch > 0 {
 		target = version.CalVer{Year: releaseTargetYear, Month: releaseTargetMonth, Patch: releaseTargetPatch}
 	} else {
-		current, err := version.Parse(currentVer)
+		target, err = resolveJaflyReleaseTarget(currentVer)
 		if err != nil {
-			current = version.Current()
+			return fmt.Errorf("resolve release target: %w", err)
 		}
-		target = version.Next(current)
 	}
 	targetStr := target.String()
+	if _, err := version.Parse(targetStr); err != nil {
+		return fmt.Errorf("invalid release target: %w", err)
+	}
 	releaseBranch := "release/" + targetStr
 	releaseTag := "v" + targetStr
 
@@ -136,6 +145,11 @@ func runRelease(cmd *cobra.Command, args []string) error {
 	}
 	p.Newline()
 
+	if releaseDryRun {
+		p.Info("Dry run complete: no branches, tags, workflows, or release records changed")
+		return nil
+	}
+
 	// ── Phase 3: Per-layer cascade ────────────────────────────────────────
 	for layerIdx, layer := range layers {
 		if layerIdx < releaseFromLayer {
@@ -153,8 +167,13 @@ func runRelease(cmd *cobra.Command, args []string) error {
 				continue
 			}
 			if err := processRepoForRelease(p, cfg.ReposPath, repo, releaseBranch, targetStr); err != nil {
-				p.Warning(fmt.Sprintf("%s: %s", repo, err))
+				return fmt.Errorf("%s: %w", repo, err)
 			}
+		}
+
+		if releaseSkipTag {
+			p.Info("Release branch prepared; tagging and publication were skipped")
+			return nil
 		}
 
 		// Wait for all PRs in this layer to merge + tag + GH packages publish
@@ -173,15 +192,14 @@ func runRelease(cmd *cobra.Command, args []string) error {
 	p.StageHeader(99, "Verification")
 	report, err := version.CheckAll(cfg.ReposPath)
 	if err != nil {
-		p.Warning("Could not verify: " + err.Error())
-	} else if report.Consistent {
-		for ver := range report.UniqueVersions {
-			if ver == targetStr {
-				p.Success(fmt.Sprintf("All %d repos at %s", report.TotalWithPom, targetStr))
-			} else {
-				p.Warning(fmt.Sprintf("Repos at unexpected version %s", ver))
-			}
-		}
+		return err
+	}
+	if !report.Consistent || report.TotalWithPom != 1 || len(report.UniqueVersions) != 1 || report.UniqueVersions[targetStr] == 0 {
+		return fmt.Errorf("release checkout versions do not match %s: %v", targetStr, report.UniqueVersions)
+	}
+	cfg.ParentVersion = targetStr
+	if err := cfg.Save(); err != nil {
+		p.Warning("Release succeeded; could not save CLI config: " + err.Error())
 	}
 
 	elapsed := time.Since(overallStart).Truncate(time.Second)
@@ -204,15 +222,76 @@ func isPartOfBuild(repo string) bool {
 	return true
 }
 
+func checkoutReleaseBranch(repoDir, branch string) error {
+	command := exec.Command("git", "show-ref", "--verify", "--quiet", "refs/heads/"+branch)
+	command.Dir = repoDir
+	if command.Run() == nil {
+		return git.RunCmd(repoDir, "checkout", branch)
+	}
+	return git.RunCmd(repoDir, "checkout", "-b", branch)
+}
+
+func prepareJaflyReleaseVersion(reposDir, target string) error {
+	repoDir := filepath.Join(reposDir, "fireflyframework-jafly")
+	dirty, err := git.IsDirty(repoDir)
+	if err != nil {
+		return err
+	}
+	if dirty {
+		return fmt.Errorf("working tree is not clean: %s", repoDir)
+	}
+	results, err := version.BumpAll(version.BumpOptions{ReposDir: reposDir, NewVersion: target}, nil)
+	if err != nil {
+		return err
+	}
+	if len(results) != 1 {
+		return fmt.Errorf("expected one Java checkout, found %d", len(results))
+	}
+	result := results[0]
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.Updated == 0 {
+		return nil
+	}
+	args := []string{"add", "--"}
+	for _, pom := range version.FindAllPoms(repoDir) {
+		relative, err := filepath.Rel(repoDir, pom)
+		if err != nil {
+			return err
+		}
+		args = append(args, relative)
+	}
+	if err := git.RunCmd(repoDir, args...); err != nil {
+		return err
+	}
+	return git.Commit(repoDir, "release: prepare "+target)
+}
+
 func processRepoForRelease(p *ui.Printer, reposDir, repo, releaseBranch, targetStr string) error {
 	repoDir := filepath.Join(reposDir, repo)
 	if _, err := os.Stat(repoDir); os.IsNotExist(err) {
 		return fmt.Errorf("not cloned")
 	}
 
-	// Switch to release branch (create if missing, hard-reset to current main otherwise)
-	if err := git.RunCmd(repoDir, "checkout", "-B", releaseBranch); err != nil {
+	if releaseDryRun {
+		p.Info(repo + " [dry-run] would create " + releaseBranch + ", push, and open a PR")
+		return nil
+	}
+
+	dirty, err := git.IsDirty(repoDir)
+	if err != nil {
+		return err
+	}
+	if dirty {
+		return fmt.Errorf("working tree is not clean: %s", repoDir)
+	}
+	if err := checkoutReleaseBranch(repoDir, releaseBranch); err != nil {
 		return fmt.Errorf("checkout: %w", err)
+	}
+
+	if err := prepareJaflyReleaseVersion(reposDir, targetStr); err != nil {
+		return err
 	}
 
 	// Push the branch (no-op if up to date)
@@ -225,7 +304,7 @@ func processRepoForRelease(p *ui.Printer, reposDir, repo, releaseBranch, targetS
 	}
 
 	if releaseSkipPRs {
-		return nil
+		return git.RunCmd(repoDir, "push", "origin", "HEAD:main")
 	}
 
 	if releaseDryRun {
@@ -281,21 +360,18 @@ func runGH(repoDir string, args ...string) (string, error) {
 	return string(out), err
 }
 
-// waitForLayerRelease blocks until every repo in the layer has its v<target>
-// release workflow's github-packages job in SUCCESS state. Repos are tagged
-// here (after their PR merges) and we then poll until the release workflow's
-// gh-packages step completes.
+// waitForLayerRelease tags the merged release commit, then waits for the exact
+// tag's complete publication workflow, including both registries.
 func waitForLayerRelease(p *ui.Printer, layer []string, tag string) error {
-	deadline := time.Now().Add(time.Duration(releasePerRepoTimeout) * time.Minute)
 	for _, repo := range layer {
 		if !isPartOfBuild(repo) {
 			continue
 		}
 		if err := mergeAndTagRepo(p, repo, tag); err != nil {
-			p.Warning(fmt.Sprintf("%s tag: %s", repo, err))
+			return fmt.Errorf("%s tag: %w", repo, err)
 		}
 	}
-	// Now wait for github-packages
+	deadline := time.Now().Add(time.Duration(releasePerRepoTimeout) * time.Minute)
 	for {
 		if time.Now().After(deadline) {
 			return fmt.Errorf("timeout waiting for layer release")
@@ -305,14 +381,24 @@ func waitForLayerRelease(p *ui.Printer, layer []string, tag string) error {
 			if !isPartOfBuild(repo) {
 				continue
 			}
-			conc, _ := ghPackagesStatus(repo)
+			sha, err := git.HeadSHA(filepath.Join(cfgRepoPath(), repo))
+			if err != nil {
+				return err
+			}
+			conc, err := ghPackagesStatus(repo, tag, sha)
+			if err != nil {
+				return err
+			}
+			if conc != "" && conc != "success" {
+				return fmt.Errorf("%s release failed: %s", repo, conc)
+			}
 			if conc != "success" {
 				allDone = false
 				break
 			}
 		}
 		if allDone {
-			p.Success("Layer release complete (all on GitHub Packages)")
+			p.Success("Release workflow completed, including GitHub Packages and Maven Central")
 			return nil
 		}
 		time.Sleep(30 * time.Second)
@@ -323,22 +409,69 @@ func waitForLayerRelease(p *ui.Printer, layer []string, tag string) error {
 // pushes a new annotated tag. Uses --admin to bypass branch protection when
 // the gh token has admin rights on the repo.
 func mergeAndTagRepo(p *ui.Printer, repo, tag string) error {
+	if releaseDryRun {
+		return nil
+	}
 	repoDir := filepath.Join(cfgRepoPath(), repo)
-	// Admin merge the PR (no-op if already merged)
-	_, _ = runGH(repoDir, "pr", "merge", "--squash", "--delete-branch", "--admin")
-	// Pull main
+	if number := findOpenPRNumber(repoDir, "release/"+strings.TrimPrefix(tag, "v")); number != 0 {
+		args := []string{"pr", "merge", fmt.Sprint(number), "--squash", "--delete-branch", "--auto"}
+		if releaseAdminMerge {
+			args = append(args, "--admin")
+		}
+		if out, err := runGH(repoDir, args...); err != nil {
+			return fmt.Errorf("merge release PR: %w: %s", err, strings.TrimSpace(out))
+		}
+		deadline := time.Now().Add(time.Duration(releasePerRepoTimeout) * time.Minute)
+		for {
+			state, err := runGH(repoDir, "pr", "view", fmt.Sprint(number), "--json", "state", "--jq", ".state")
+			if err != nil {
+				return err
+			}
+			if strings.TrimSpace(state) == "MERGED" {
+				break
+			}
+			if strings.TrimSpace(state) != "OPEN" {
+				return fmt.Errorf("release PR is %s", strings.TrimSpace(state))
+			}
+			if time.Now().After(deadline) {
+				return fmt.Errorf("timeout waiting for release PR")
+			}
+			time.Sleep(15 * time.Second)
+		}
+	}
 	if err := git.RunCmd(repoDir, "checkout", "main"); err != nil {
 		return err
 	}
 	if err := git.RunCmd(repoDir, "pull", "--ff-only"); err != nil {
 		return err
 	}
-	// Tag (no-op if already exists)
-	if err := git.RunCmd(repoDir, "tag", "-a", tag, "-m", "Release "+tag); err != nil {
-		// May fail with "tag already exists" — ignore
+	target := strings.TrimPrefix(tag, "v")
+	actual, err := version.ReadPomVersion(filepath.Join(repoDir, "build", "parent", "pom.xml"))
+	if err != nil || actual != target {
+		return fmt.Errorf("main framework version %q does not match tag %s: %v", actual, tag, err)
 	}
-	if releaseDryRun {
-		return nil
+	sha, err := git.HeadSHA(repoDir)
+	if err != nil {
+		return err
+	}
+	publishedMain := exec.Command("git", "rev-parse", "--verify", "refs/remotes/origin/main^{commit}")
+	publishedMain.Dir = repoDir
+	publishedSHA, err := publishedMain.Output()
+	if err != nil {
+		return fmt.Errorf("resolve published origin/main: %w", err)
+	}
+	if strings.TrimSpace(string(publishedSHA)) != sha {
+		return fmt.Errorf("local main differs from published origin/main; synchronize main before tagging")
+	}
+	resolve := exec.Command("git", "rev-parse", "--verify", tag+"^{commit}")
+	resolve.Dir = repoDir
+	existing, resolveErr := resolve.Output()
+	if resolveErr == nil {
+		if strings.TrimSpace(string(existing)) != sha {
+			return fmt.Errorf("existing tag %s points to another commit", tag)
+		}
+	} else if err := git.Tag(repoDir, tag); err != nil {
+		return err
 	}
 	if err := git.RunCmd(repoDir, "push", "origin", tag); err != nil {
 		return fmt.Errorf("push tag: %w", err)
@@ -352,34 +485,34 @@ func cfgRepoPath() string {
 	return cfg.ReposPath
 }
 
-// ghPackagesStatus returns the conclusion of the github-packages job in the
-// latest release workflow run, or "" if not yet reported.
-func ghPackagesStatus(repo string) (string, error) {
+// ghPackagesStatus checks the entire destination release workflow at the exact
+// tag and commit; a prior release or a branch build cannot satisfy this gate.
+func ghPackagesStatus(repo, tag, sha string) (string, error) {
 	out, err := runGH(filepath.Join(cfgRepoPath(), repo), "run", "list",
-		"--workflow=release.yml", "--limit", "1", "--json", "databaseId", "-q", ".[0].databaseId")
+		"--workflow=release.yml", "--commit", sha, "--limit", "50",
+		"--json", "headSha,headBranch,status,conclusion")
 	if err != nil {
 		return "", err
 	}
-	runID := strings.TrimSpace(out)
-	if runID == "" {
-		return "", nil
+	return releaseConclusion([]byte(out), tag, sha)
+}
+
+func releaseConclusion(payload []byte, tag, sha string) (string, error) {
+	var runs []struct {
+		HeadSHA    string `json:"headSha"`
+		HeadBranch string `json:"headBranch"`
+		Status     string `json:"status"`
+		Conclusion string `json:"conclusion"`
 	}
-	jobsOut, err := runGH(filepath.Join(cfgRepoPath(), repo), "run", "view", runID, "--json", "jobs")
-	if err != nil {
+	if err := json.Unmarshal(payload, &runs); err != nil {
 		return "", err
 	}
-	var data struct {
-		Jobs []struct {
-			Name       string `json:"name"`
-			Conclusion string `json:"conclusion"`
-		} `json:"jobs"`
-	}
-	if err := json.Unmarshal([]byte(jobsOut), &data); err != nil {
-		return "", err
-	}
-	for _, j := range data.Jobs {
-		if strings.Contains(j.Name, "github-packages") {
-			return j.Conclusion, nil
+	for _, run := range runs {
+		if run.HeadSHA == sha && run.HeadBranch == tag {
+			if run.Status != "completed" {
+				return "", nil
+			}
+			return run.Conclusion, nil
 		}
 	}
 	return "", nil
@@ -460,7 +593,7 @@ var verifyVersion string
 
 var releaseVerifyCmd = &cobra.Command{
 	Use:   "verify",
-	Short: "Verify a released version across git tags, GitHub Packages, and Maven Central",
+	Short: "Verify every exact release artifact against its publication SHA256",
 	RunE:  runReleaseVerify,
 }
 
@@ -474,75 +607,93 @@ func runReleaseVerify(cmd *cobra.Command, args []string) error {
 	if ver == "" {
 		ver = cfg.ParentVersion
 	}
-	tag := "v" + ver
-
-	p.Header("Release verification @ " + ver)
-	p.Newline()
-	fmt.Printf("  %-50s %-12s %-12s %-12s\n", "Repo", "Tag", "GH Pkgs", "Mvn Central")
-	fmt.Println("  " + strings.Repeat("─", 92))
-
-	var tagOK, ghOK, mcOK int
-	for _, repo := range setup.FrameworkRepos {
-		if !isPartOfBuild(repo) {
-			continue
-		}
-		tagMark := mark(checkTagExists(repo, tag))
-		ghMark := mark(checkGHPackagesHas(repo, ver))
-		mcMark := mark(checkMavenCentralHas(repo, ver))
-		if tagMark == "✓" {
-			tagOK++
-		}
-		if ghMark == "✓" {
-			ghOK++
-		}
-		if mcMark == "✓" {
-			mcOK++
-		}
-		fmt.Printf("  %-50s %-12s %-12s %-12s\n", repo, tagMark, ghMark, mcMark)
+	if parsed, err := version.Parse(ver); err != nil || parsed.String() != ver {
+		return fmt.Errorf("a final padded CalVer is required: %q", ver)
 	}
-	fmt.Println("  " + strings.Repeat("─", 92))
-	fmt.Printf("  %-50s %d/%-9d %d/%-9d %d/%-9d\n", "Total", tagOK, len(setup.FrameworkRepos), ghOK, len(setup.FrameworkRepos), mcOK, len(setup.FrameworkRepos))
+	repository := cfg.GithubOrg + "/fireflyframework-jafly"
+	tag := "v" + ver
+	commit, err := resolveReleaseTagCommit(repository, tag, func(endpoint string) ([]byte, error) {
+		out, err := runGH("", "api", endpoint)
+		return []byte(out), err
+	})
+	if err != nil {
+		return err
+	}
+	temp, err := os.MkdirTemp("", "flywork-release-verify-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(temp)
+	download := []string{"release", "download", tag, "--repo", repository, "--dir", temp}
+	for _, name := range []string{"reactor-inventory.json", "github-manifest.json", "release-manifest.json", "release-commit.txt"} {
+		download = append(download, "--pattern", name)
+	}
+	if out, err := runGH("", download...); err != nil {
+		return fmt.Errorf("download exact release manifests: %w: %s", err, strings.TrimSpace(out))
+	}
+	read := func(name string) ([]byte, error) { return os.ReadFile(filepath.Join(temp, name)) }
+	commitEvidence, err := read("release-commit.txt")
+	if err != nil {
+		return err
+	}
+	if err := validateReleaseCommit(commitEvidence, commit); err != nil {
+		return err
+	}
+	inventory, err := read("reactor-inventory.json")
+	if err != nil {
+		return err
+	}
+	githubManifest, err := read("github-manifest.json")
+	if err != nil {
+		return err
+	}
+	centralManifest, err := read("release-manifest.json")
+	if err != nil {
+		return err
+	}
+	repoDir := filepath.Join(temp, "source")
+	if err := cloneReleaseSource("https://github.com/"+repository+".git", tag, commit, repoDir); err != nil {
+		return err
+	}
+	script := filepath.Join(repoDir, "scripts", "release_tools.py")
+	sourceInventoryPath := filepath.Join(temp, "source-inventory.json")
+	check := exec.Command("python3", script, "check", "--tag", tag, "--output", sourceInventoryPath)
+	check.Dir = repoDir
+	if out, err := check.CombinedOutput(); err != nil {
+		return fmt.Errorf("read exact tagged reactor: %w: %s", err, strings.TrimSpace(string(out)))
+	}
+	sourceInventory, err := os.ReadFile(sourceInventoryPath)
+	if err != nil {
+		return err
+	}
+	if err := validateReleaseInventory(inventory, sourceInventory, githubManifest, centralManifest, ver); err != nil {
+		return err
+	}
+	for _, target := range []struct {
+		manifest string
+		url      string
+		auth     bool
+	}{
+		{"github-manifest.json", "https://maven.pkg.github.com/" + cfg.GithubOrg + "/fireflyframework-jafly", true},
+		{"release-manifest.json", "https://repo.maven.apache.org/maven2", false},
+	} {
+		args := []string{script, "verify", "--manifest", filepath.Join(temp, target.manifest), "--url", target.url, "--attempts", "1", "--delay", "0"}
+		if target.auth {
+			args = append(args, "--username-env", "GITHUB_ACTOR", "--token-env", "GITHUB_TOKEN")
+		}
+		command := exec.Command("python3", args...)
+		command.Dir = repoDir
+		if out, err := command.CombinedOutput(); err != nil {
+			return fmt.Errorf("verify %s: %w: %s", target.url, err, strings.TrimSpace(string(out)))
+		}
+	}
+	p.Success("Every artifact in the exact release inventory matches its SHA256 on GitHub Packages and Maven Central")
 	return nil
 }
 
-func mark(ok bool) string {
-	if ok {
-		return ui.StyleSuccess.Render("✓")
-	}
-	return "·"
-}
-
-func checkTagExists(repo, tag string) bool {
-	out, err := runGH("", "api", "/repos/fireflyframework/"+repo+"/git/refs/tags/"+tag, "-q", ".object.sha")
-	if err != nil {
-		return false
-	}
-	s := strings.TrimSpace(out)
-	return s != "" && !strings.Contains(out, "Not Found")
-}
-
-func checkGHPackagesHas(repo, version string) bool {
-	out, err := runGH("", "api",
-		"/orgs/fireflyframework/packages/maven/org.fireflyframework."+repo+"/versions",
-		"-q", ".[] | select(.name==\""+version+"\") | .name")
-	if err != nil {
-		return false
-	}
-	return strings.TrimSpace(out) == version
-}
-
-func checkMavenCentralHas(repo, version string) bool {
-	// Public Maven Central search API — does not require auth
-	cmd := exec.Command("curl", "-sf", "-o", "/dev/null", "-w", "%{http_code}",
-		"https://repo.maven.apache.org/maven2/org/fireflyframework/"+repo+"/"+version+"/"+repo+"-"+version+".pom")
-	out, _ := cmd.Output()
-	return strings.TrimSpace(string(out)) == "200"
-}
-
 // ── flywork release publish-mvn-central ─────────────────────────────────────
-// Triggers the per-repo maven-central.yml workflow via workflow_dispatch.
-// Useful when Sonatype polling timed out and the deploy bundle was uploaded
-// but not validated — retrying is enough since the bundle is already there.
+// Dispatches the tagged unified release workflow. Partial publication requires
+// inspection because an immutable registry version cannot be overwritten.
 
 var mvnCentralVersion string
 var mvnCentralRepoOverride string
@@ -550,7 +701,7 @@ var mvnCentralWaitTime int
 
 var releaseMvnCentralCmd = &cobra.Command{
 	Use:   "publish-mvn-central",
-	Short: "Trigger Maven Central publish workflow (workflow_dispatch) for repos missing on Central",
+	Short: "Dispatch the combined publication workflow at an existing final tag",
 	RunE:  runReleasePublishMvnCentral,
 }
 
@@ -564,48 +715,18 @@ func runReleasePublishMvnCentral(cmd *cobra.Command, args []string) error {
 	if ver == "" {
 		ver = cfg.ParentVersion
 	}
-
-	p.Header("Maven Central publish @ " + ver)
-	p.Newline()
-
-	repos := setup.FrameworkRepos
-	if mvnCentralRepoOverride != "" {
-		repos = []string{mvnCentralRepoOverride}
+	if parsed, err := version.Parse(ver); err != nil || parsed.String() != ver {
+		return fmt.Errorf("a final padded CalVer is required: %q", ver)
 	}
-
-	dispatched, skipped, failed := 0, 0, 0
-	for _, repo := range repos {
-		if !isPartOfBuild(repo) {
-			continue
-		}
-		if checkMavenCentralHas(repo, ver) {
-			p.Info(fmt.Sprintf("%-50s already on Maven Central", repo))
-			skipped++
-			continue
-		}
-		// workflow_dispatch must reference a branch (the workflow_dispatch trigger
-		// is only registered when the workflow exists on the default branch). The
-		// workflow itself reads project.version from the checked-out pom, which on
-		// main matches the version we want to publish.
-		args := []string{"workflow", "run", "maven-central.yml",
-			"--repo", "fireflyframework/" + repo,
-			"--ref", "main",
-			"-f", fmt.Sprintf("wait-max-time=%d", mvnCentralWaitTime),
-		}
-		out, err := runGH("", args...)
-		if err != nil {
-			p.Warning(fmt.Sprintf("%-50s dispatch failed: %s", repo, strings.TrimSpace(out)))
-			failed++
-			continue
-		}
-		p.Success(fmt.Sprintf("%-50s dispatched", repo))
-		dispatched++
+	if mvnCentralRepoOverride != "" && mvnCentralRepoOverride != "fireflyframework-jafly" {
+		return fmt.Errorf("Java publication uses fireflyframework-jafly")
 	}
-	p.SummaryBox("publish-mvn-central", []string{
-		fmt.Sprintf("Dispatched   %d", dispatched),
-		fmt.Sprintf("Already on   %d", skipped),
-		fmt.Sprintf("Failed       %d", failed),
-	})
+	tag := "v" + ver
+	out, err := runGH("", "workflow", "run", "release.yml", "--repo", cfg.GithubOrg+"/fireflyframework-jafly", "--ref", tag, "-f", "tag="+tag)
+	if err != nil {
+		return fmt.Errorf("dispatch exact tagged release: %w: %s", err, strings.TrimSpace(out))
+	}
+	p.Info("Dispatched the combined GitHub Packages and Maven Central workflow at " + tag + "; completion is verified by the release workflow")
 	return nil
 }
 
@@ -619,8 +740,8 @@ func init() {
 	releaseCmd.Flags().BoolVar(&releaseSkipPRs, "skip-prs", false, "Push directly to main (skip PR step)")
 	releaseCmd.Flags().BoolVar(&releaseSkipTag, "skip-tag", false, "Do not tag main (skip release trigger)")
 	releaseCmd.Flags().IntVar(&releaseFromLayer, "from-layer", 0, "Resume cascade starting at this layer (0-indexed)")
-	releaseCmd.Flags().BoolVar(&releaseAdminMerge, "admin", true, "Use --admin to bypass branch protection / required reviews")
-	releaseCmd.Flags().IntVar(&releasePerRepoTimeout, "timeout-minutes", 30, "Per-layer timeout in minutes for the github-packages wait")
+	releaseCmd.Flags().BoolVar(&releaseAdminMerge, "admin", false, "Use --admin to bypass branch protection / required reviews")
+	releaseCmd.Flags().IntVar(&releasePerRepoTimeout, "timeout-minutes", 180, "Timeout in minutes for the release PR and, separately, the complete publication workflow")
 	releaseCmd.Flags().StringVar(&releaseRepoOverride, "repo", "", "Limit to a single repo (still respects DAG order)")
 
 	releaseVerifyCmd.Flags().StringVar(&verifyVersion, "version", "", "Version to verify (defaults to config.ParentVersion)")

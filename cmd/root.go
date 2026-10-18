@@ -86,16 +86,16 @@ The official CLI for the Firefly Framework. Scaffold, setup, build, publish,
 and manage your Firefly-based Java microservices from the terminal.
 
 Available Commands:
-  setup       Bootstrap the Firefly Framework (clone + install all repos)
+  setup       Bootstrap Jafly (one checkout and Maven reactor)
   create      Scaffold a new project from an archetype (core, domain, application, library)
   doctor      Diagnose your environment and project health
-  update      Pull latest changes and reinstall framework repos
+  update      Pull Jafly changes and reinstall its Maven reactor
   build       Smart DAG-aware build with change detection
   publish     Publish Maven artifacts to GitHub Packages
   run         Run a Firefly Framework application with configuration assistance
   dag         Inspect the framework dependency graph
   fwversion   Manage framework-wide CalVer versions
-  release     Orchestrate a full layer-by-layer framework release (push, PR, tag, publish)
+  release     Prepare and verify a unified Jafly release (PR, tag, publish)
   config      View and manage CLI configuration
   upgrade     Self-update the CLI binary from GitHub releases
   version     Print CLI version information
@@ -107,7 +107,8 @@ Getting Started:
 
 Configuration:
   Config file: ~/.flywork/config.yaml
-  Repos path:  ~/.flywork/repos`,
+  Repos path:  ~/.flywork/repos
+  Set FLYWORK_HOME to isolate configuration, setup state, logs, and checkouts.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		if !shouldSkipBanner(cmd) {
 			fmt.Println(bannerStyle.Render(banner))
