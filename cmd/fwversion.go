@@ -445,7 +445,7 @@ repositories:
 
   - POM version consistency: all repos should be at the same version
   - Config matches repos: ~/.flywork/config.yaml parent_version matches actual POMs
-  - Git tags: each repo's latest tag should match its POM version (v<version>)
+  - Git tags: final versions require matching tags; development snapshots do not
   - Clean working trees: no uncommitted changes in any repository
   - All repos cloned: verifies all expected repositories exist
   - Parent POM in .m2: the parent POM artifact is installed at the target version
@@ -521,7 +521,7 @@ func runFwversionCheck(cmd *cobra.Command, args []string) error {
 	tagMismatch := 0
 	tagMissing := 0
 	for _, rs := range report.Repos {
-		if !rs.Exists || !rs.HasPom {
+		if !rs.Exists || !rs.HasPom || strings.HasSuffix(rs.PomVersion, "-SNAPSHOT") {
 			continue
 		}
 		expectedTag := "v" + rs.PomVersion

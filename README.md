@@ -274,7 +274,7 @@ flywork fwversion families # show version family release history
 |------------|-------------|
 | `show` | Displays current POM versions, mismatches, dirty trees, and config alignment |
 | `bump` | Updates framework versions and references, preserves application and third-party versions, and optionally commits, tags, and pushes |
-| `check` | Runs consistency checks: POM versions, config match, git tags, clean trees, `.m2` artifacts |
+| `check` | Checks POM versions, config, final-release tags, clean trees, and `.m2` artifacts; snapshots need no final tag and historical `legacy/` tags are ignored |
 | `families` | Shows version family history; each bump records the repository SHA |
 
 **Bump flags:**

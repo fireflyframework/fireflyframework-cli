@@ -131,7 +131,7 @@ func PushTags(dir string) error {
 
 // LatestTag returns the most recent tag reachable from HEAD.
 func LatestTag(dir string) (string, error) {
-	cmd := exec.Command("git", "describe", "--tags", "--abbrev=0")
+	cmd := exec.Command("git", "describe", "--tags", "--abbrev=0", "--match", "v*")
 	cmd.Dir = dir
 	out, err := cmd.Output()
 	if err != nil {
